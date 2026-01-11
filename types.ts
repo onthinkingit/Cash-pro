@@ -12,7 +12,7 @@ export interface User {
   id: string;
   phone: string;
   username: string;
-  avatar?: string; // Base64 or URL
+  avatar?: string;
   customId: string;
   cashBalance: number;
   bonusBalance: number;
@@ -39,6 +39,9 @@ export interface Transaction {
   timestamp: string;
   status: 'completed' | 'pending' | 'failed';
   txId?: string;
+  method?: 'bkash' | 'nagad';
+  accountType?: 'Personal' | 'Agent';
+  receiverNumber?: string;
 }
 
 export interface DepositRequest {
@@ -49,8 +52,32 @@ export interface DepositRequest {
   amount: number;
   method: 'bkash' | 'nagad';
   txId: string;
+  screenshot?: string; // Base64
   status: 'pending' | 'approved' | 'rejected';
+  adminNote?: string;
+  bonusApplied?: number;
   timestamp: string;
+}
+
+export interface WithdrawalRequest {
+  id: string;
+  userId: string;
+  username: string;
+  amount: number;
+  method: 'bkash' | 'nagad';
+  accountType: 'Personal' | 'Agent';
+  receiverNumber: string;
+  status: 'pending' | 'approved' | 'rejected';
+  adminNote?: string;
+  timestamp: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  message: string;
+  timestamp: string;
+  isRead: boolean;
 }
 
 export interface AppSettings {
