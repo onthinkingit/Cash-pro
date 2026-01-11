@@ -89,6 +89,7 @@ export interface AppSettings {
   bkashType: 'Personal' | 'Agent';
   nagadNumber: string;
   nagadType: 'Personal' | 'Agent';
+  matchFees: number[];
 }
 
 export interface Match {

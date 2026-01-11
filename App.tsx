@@ -9,10 +9,10 @@ import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 import GameRoom from './pages/GameRoom';
 import { translations } from './translations';
-import { PlayerLevel } from './types';
+import { PlayerLevel, User } from './types';
 
 const AppContent: React.FC = () => {
-  const { isLoggedIn, user, setUser, lang } = useApp();
+  const { isLoggedIn, user, setUser, allUsers, setAllUsers, lang, addNotification } = useApp();
   const t = translations[lang];
 
   const [isLogin, setIsLogin] = useState(true);
@@ -21,23 +21,27 @@ const AppContent: React.FC = () => {
   const [referralCode, setReferralCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
+  const [error, setError] = useState('');
 
   const handleAuth = () => {
+    setError('');
+    
+    // Super Admin Credentials
     if (phone === '01577378394' && password === 'AnAmFJAaj@1') {
       setUser({
         id: 'admin_1',
         phone,
-        username: 'Admin',
-        customId: 'ADMIN001',
-        cashBalance: 1000,
-        bonusBalance: 500,
-        referralCode: 'ADMINPRO',
-        matchesPlayed: 150,
-        wins: 120,
-        losses: 30,
+        username: 'Super Admin',
+        customId: 'ADMIN-PRO-MASTER',
+        cashBalance: 0,
+        bonusBalance: 0,
+        referralCode: 'SUPERSYSTEM',
+        matchesPlayed: 0,
+        wins: 0,
+        losses: 0,
         level: PlayerLevel.SUPERMAN,
-        referralCount: 45,
-        totalReferralBonus: 675,
+        referralCount: 0,
+        totalReferralBonus: 0,
         isAdmin: true,
         status: 'active',
         referrals: []
@@ -46,41 +50,62 @@ const AppContent: React.FC = () => {
     }
 
     if (!otpSent) {
+      if (!phone || phone.length < 11) {
+        setError('Please enter a valid phone number');
+        return;
+      }
       setOtpSent(true);
       return;
     }
 
-    const generatedUserId = `LUDO${Math.floor(1000 + Math.random() * 9000)}`;
-    const newUser = {
-      id: Math.random().toString(36).substr(2, 9),
-      phone,
-      username: `User_${phone.substr(-4)}`,
-      customId: generatedUserId,
-      cashBalance: isLogin ? 100 : 0,
-      bonusBalance: 0,
-      referralCode: Math.random().toString(36).substr(2, 6).toUpperCase(),
-      matchesPlayed: 0,
-      wins: 0,
-      losses: 0,
-      level: PlayerLevel.SILVER,
-      referralCount: 0,
-      totalReferralBonus: 0,
-      status: 'active' as const,
-      referrals: []
-    };
+    // Find existing user in mock database
+    const existingUser = allUsers.find(u => u.phone === phone);
 
-    if (!isLogin && referralCode.length > 3) {
-      newUser.bonusBalance = 15;
-      alert(t.referralBonusMsg);
+    if (existingUser) {
+      if (existingUser.status === 'banned') {
+        setError(t.bannedError);
+        return;
+      }
+      setUser(existingUser);
+    } else {
+      // Create new user
+      const generatedUserId = `LUDO${Math.floor(1000 + Math.random() * 9000)}`;
+      const newUser: User = {
+        id: Math.random().toString(36).substr(2, 9),
+        phone,
+        username: `User_${phone.substr(-4)}`,
+        customId: generatedUserId,
+        cashBalance: 0, 
+        bonusBalance: 10, // Base signup bonus (non-withdrawable)
+        referralCode: Math.random().toString(36).substr(2, 6).toUpperCase(),
+        matchesPlayed: 0,
+        wins: 0,
+        losses: 0,
+        level: PlayerLevel.SILVER,
+        referralCount: 0,
+        totalReferralBonus: 0,
+        status: 'active' as const,
+        referrals: []
+      };
+
+      // Add referral bonus on top of signup bonus if applicable
+      if (!isLogin && referralCode.length > 3) {
+        newUser.bonusBalance += 15; 
+      }
+
+      setAllUsers(prev => [...prev, newUser]);
+      setUser(newUser);
+      
+      // Welcome notification
+      setTimeout(() => {
+        addNotification(newUser.id, lang === 'en' ? "Welcome! You've received a ৳10 signup bonus." : "স্বাগতম! আপনি ১০৳ সাইনআপ বোনাস পেয়েছেন।");
+      }, 1000);
     }
-
-    setUser(newUser);
   };
 
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 overflow-hidden">
-        {/* Background Accents */}
         <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none"></div>
 
@@ -96,18 +121,24 @@ const AppContent: React.FC = () => {
           <div className="bg-slate-900/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-700/50 shadow-2xl space-y-6">
             <div className="flex gap-4 mb-4">
               <button 
-                onClick={() => { setIsLogin(true); setOtpSent(false); }}
+                onClick={() => { setIsLogin(true); setOtpSent(false); setError(''); }}
                 className={`flex-1 pb-4 text-center font-bebas text-2xl tracking-widest transition-all border-b-2 ${isLogin ? 'text-amber-500 border-amber-500' : 'text-slate-500 border-transparent'}`}
               >
                 {t.login}
               </button>
               <button 
-                onClick={() => { setIsLogin(false); setOtpSent(false); }}
+                onClick={() => { setIsLogin(false); setOtpSent(false); setError(''); }}
                 className={`flex-1 pb-4 text-center font-bebas text-2xl tracking-widest transition-all border-b-2 ${!isLogin ? 'text-amber-500 border-amber-500' : 'text-slate-500 border-transparent'}`}
               >
                 {t.register}
               </button>
             </div>
+
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-2xl text-red-500 text-xs font-bold animate-in fade-in">
+                {error}
+              </div>
+            )}
 
             <div className="space-y-5">
               <div className="space-y-2">

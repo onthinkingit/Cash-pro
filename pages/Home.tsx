@@ -1,155 +1,268 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { translations } from '../translations';
-import { Send, Users, User, Trophy, Zap, Info } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Send, Users, User, Trophy, Zap, ChevronRight, Play, AlertCircle, XCircle, Wallet, Frown } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Home: React.FC = () => {
   const { lang, settings, user } = useApp();
   const t = translations[lang];
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [selectedFee, setSelectedFee] = useState<number>(10);
+  const [selectedFee, setSelectedFee] = useState<number>(settings.matchFees[0] || 12);
   const [mode, setMode] = useState<'2P' | '4P'>('2P');
+  const [showEntryDialog, setShowEntryDialog] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success'; action?: { label: string; onClick: () => void } } | null>(null);
 
-  const fees = [10, 25, 50, 100, 250, 500, 1000];
+  useEffect(() => {
+    // Handle game results passed via location state
+    if (location.state?.gameResult) {
+      const { gameResult, prize } = location.state;
+      if (gameResult === 'win') {
+        showFeedback(
+          `${t.win}! ${t.totalPrize.replace('{amount}', prize)}`, 
+          'success'
+        );
+      } else {
+        showFeedback(t.lose, 'error');
+      }
+      // Clear navigation state
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
+
+  const showFeedback = (message: string, type: 'error' | 'success', action?: { label: string; onClick: () => void }) => {
+    setToast({ message, type, action });
+    if (!action) {
+      setTimeout(() => setToast(null), 5000);
+    }
+  };
+
+  const playersCount = mode === '2P' ? 2 : 4;
+  const totalPool = selectedFee * playersCount;
+  const prizePool = totalPool * (1 - settings.commissionRate);
 
   const handleStartMatch = () => {
     if (!user) return;
-    const totalBalance = user.cashBalance + user.bonusBalance;
-    if (totalBalance < selectedFee) {
-      alert(lang === 'en' ? 'Insufficient balance!' : 'পর্যাপ্ত ব্যালেন্স নেই!');
+    
+    // Check for block status
+    if (user.status === 'banned') {
+      showFeedback(t.bannedError, 'error');
       return;
     }
+
+    const totalBalance = user.cashBalance + user.bonusBalance;
+    if (totalBalance < selectedFee) {
+      showFeedback(
+        t.insufficientBalance, 
+        'error', 
+        { 
+          label: t.deposit, 
+          onClick: () => navigate('/wallet?tab=deposit') 
+        }
+      );
+      return;
+    }
+
+    setShowEntryDialog(false);
     navigate(`/game?fee=${selectedFee}&mode=${mode}`);
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 p-8 shadow-2xl shadow-amber-500/20">
-        <div className="relative z-10">
-          <h1 className="text-4xl md:text-6xl font-bebas tracking-wider mb-2">{t.welcome}</h1>
-          <p className="text-amber-100 max-w-md opacity-90">
-            {lang === 'en' ? 'Challenge players across Bangladesh and win real cash in every roll!' : 'সারা বাংলাদেশের খেলোয়াড়দের চ্যালেঞ্জ করুন এবং প্রতিটি রোলে আসল টাকা জিতে নিন!'}
-          </p>
-          <div className="mt-8 flex flex-wrap gap-4">
-            <a 
-              href={settings.telegramLink} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-full font-bold hover:bg-orange-50 transition-colors shadow-lg"
-            >
-              <Send size={20} fill="currentColor" />
-              {t.joinTelegram}
-            </a>
-            <div className="flex items-center gap-2 bg-black/20 backdrop-blur-sm px-6 py-3 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-              <span className="font-medium">1,248 {t.playersOnline}</span>
+    <div className="space-y-6 animate-in slide-up duration-500 relative">
+      {/* Dynamic Toast Feedback */}
+      {toast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[300] w-[90%] max-w-sm animate-in slide-in-from-top-4 duration-300">
+          <div className={`p-4 rounded-2xl shadow-2xl flex flex-col gap-3 border backdrop-blur-md ${
+            toast.type === 'error' ? 'bg-red-600/90 border-white/20 text-white' : 'bg-emerald/90 border-white/20 text-white'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                {toast.message.includes(t.win) ? <Trophy size={24} className="text-amber-300" /> : 
+                 toast.type === 'error' ? <AlertCircle size={24} /> : <Zap size={24} />}
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-bold leading-tight">{toast.message}</p>
+              </div>
+              <button onClick={() => setToast(null)} className="p-1 hover:bg-white/10 rounded-full">
+                <XCircle size={18} />
+              </button>
+            </div>
+            {toast.action && (
+              <button 
+                onClick={() => {
+                  toast.action?.onClick();
+                  setToast(null);
+                }}
+                className="w-full bg-white text-indigo-900 py-2 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <Wallet size={14} />
+                {toast.action.label}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Selection Modal */}
+      {showEntryDialog && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-indigo-950 w-full max-w-sm rounded-[2.5rem] border border-white/10 p-8 space-y-8 animate-slide-up shadow-2xl">
+            <h2 className="text-3xl font-bebas text-center tracking-widest">{t.chooseMode}</h2>
+            
+            <div className="space-y-4">
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest text-center">{t.entryFee} (Per Person)</p>
+              <div className="grid grid-cols-3 gap-3">
+                {settings.matchFees.map(fee => (
+                  <button 
+                    key={fee} 
+                    onClick={() => setSelectedFee(fee)}
+                    className={`py-3 rounded-xl font-bebas text-xl border transition-all ${selectedFee === fee ? 'bg-electric border-electric text-white scale-105 shadow-lg shadow-electric/20' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'}`}
+                  >
+                    ৳{fee}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest text-center">Players</p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setMode('2P')}
+                  className={`flex-1 py-4 rounded-2xl font-bebas text-2xl border transition-all ${mode === '2P' ? 'bg-indigo-800 border-electric text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500'}`}
+                >
+                  2 Players
+                </button>
+                <button 
+                  onClick={() => setMode('4P')}
+                  className={`flex-1 py-4 rounded-2xl font-bebas text-2xl border transition-all ${mode === '4P' ? 'bg-indigo-800 border-electric text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500'}`}
+                >
+                  4 Players
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-emerald/10 p-4 rounded-2xl border border-emerald/20 text-center">
+               <p className="text-[10px] text-emerald font-black uppercase tracking-widest mb-1">{t.prize}</p>
+               <p className="text-3xl font-bebas text-emerald tracking-widest">৳{prizePool.toFixed(0)}</p>
+            </div>
+
+            <div className="pt-4 flex gap-4">
+              <button 
+                onClick={() => setShowEntryDialog(false)}
+                className="flex-1 py-4 bg-white/5 rounded-2xl font-bebas text-2xl tracking-widest text-slate-400"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleStartMatch}
+                className="flex-[2] py-4 bg-emerald rounded-2xl font-bebas text-2xl tracking-widest text-white glossy-btn shadow-lg shadow-emerald/20 active:scale-95"
+              >
+                {t.playNow}
+              </button>
             </div>
           </div>
         </div>
-        <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-          <Zap size={200} />
+      )}
+
+      {/* Hero LUDO Card */}
+      <div className="relative group overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-800 to-indigo-950 p-10 shadow-2xl border border-white/10 text-center flex flex-col items-center">
+        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:rotate-12 transition-transform">
+          <Zap size={180} />
+        </div>
+        
+        <div className="relative z-10 space-y-4">
+          <div className="flex items-center justify-center gap-4 mb-2">
+            <div className="w-3 h-3 bg-red-500 rounded-full shadow-lg shadow-red-500/50"></div>
+            <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg shadow-green-500/50"></div>
+            <div className="w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>
+            <div className="w-3 h-3 bg-yellow-500 rounded-full shadow-lg shadow-yellow-500/50"></div>
+          </div>
+          
+          <h1 className="text-7xl font-bebas tracking-[0.2em] text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]">LUDO</h1>
+          
+          <button 
+            onClick={() => setShowEntryDialog(true)}
+            className="w-full bg-white text-indigo-950 px-12 py-5 rounded-[2rem] font-bebas text-3xl tracking-widest shadow-2xl hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center gap-3 glossy-btn"
+          >
+            <Play fill="currentColor" size={28} />
+            {t.playNow}
+          </button>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 bg-slate-800 rounded-3xl p-6 border border-slate-700">
-          <h2 className="text-2xl font-bebas tracking-widest mb-6 flex items-center gap-2">
-            <Trophy className="text-amber-500" />
-            {t.chooseMode}
-          </h2>
-
-          <div className="flex gap-4 mb-8">
-            <button 
-              onClick={() => setMode('2P')}
-              className={`flex-1 p-4 rounded-2xl border-2 transition-all ${mode === '2P' ? 'border-amber-500 bg-amber-500/10' : 'border-slate-700 bg-slate-900/50'}`}
-            >
-              <User size={32} className={`mx-auto mb-2 ${mode === '2P' ? 'text-amber-500' : 'text-slate-500'}`} />
-              <p className="font-bold">2 Players</p>
-              <p className="text-xs text-slate-400">1 vs 1 Battle</p>
-            </button>
-            <button 
-              onClick={() => setMode('4P')}
-              className={`flex-1 p-4 rounded-2xl border-2 transition-all ${mode === '4P' ? 'border-amber-500 bg-amber-500/10' : 'border-slate-700 bg-slate-900/50'}`}
-            >
-              <Users size={32} className={`mx-auto mb-2 ${mode === '4P' ? 'text-amber-500' : 'text-slate-500'}`} />
-              <p className="font-bold">4 Players</p>
-              <p className="text-xs text-slate-400">Free For All</p>
-            </button>
+      {/* Join Telegram Banner */}
+      <div className="flex items-center justify-between p-5 bg-electric rounded-3xl shadow-lg shadow-electric/20 overflow-hidden relative">
+        <div className="flex items-center gap-4 z-10">
+          <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+            <Send size={24} className="text-white fill-white" />
           </div>
-
-          <p className="text-sm text-slate-400 mb-4 font-bold uppercase tracking-wider">{t.entryFee}</p>
-          <div className="grid grid-cols-4 gap-3 mb-8">
-            {fees.map(fee => (
-              <button
-                key={fee}
-                onClick={() => setSelectedFee(fee)}
-                className={`py-3 rounded-xl font-bold transition-all ${selectedFee === fee ? 'bg-amber-500 text-white scale-105 shadow-lg shadow-amber-500/30' : 'bg-slate-900 text-slate-400 border border-slate-700'}`}
-              >
-                ৳{fee}
-              </button>
-            ))}
-          </div>
-
-          <div className="bg-slate-900/50 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 border border-slate-700">
-            <div>
-              <p className="text-slate-400 text-sm uppercase tracking-wider">{t.prize}</p>
-              <p className="text-4xl font-bebas text-amber-400 tracking-widest">
-                ৳{(selectedFee * (mode === '2P' ? 2 : 4) * (1 - settings.commissionRate)).toFixed(0)}
-              </p>
-              <p className="text-[10px] text-slate-500">6% {t.commission} included</p>
-            </div>
-            <button 
-              onClick={handleStartMatch}
-              className="w-full md:w-auto px-12 py-4 bg-amber-500 hover:bg-amber-600 rounded-2xl font-bebas text-2xl tracking-widest transition-transform active:scale-95 shadow-xl shadow-amber-500/20"
-            >
-              {t.startMatch}
-            </button>
-          </div>
+          <span className="font-bold text-white text-lg tracking-tight">{t.joinTelegram}</span>
         </div>
+        <a 
+          href={settings.telegramLink} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="bg-white text-electric px-6 py-2.5 rounded-full font-black text-xs uppercase tracking-widest shadow-xl z-10 active:scale-95"
+        >
+          {t.joinNow}
+        </a>
+      </div>
 
-        <div className="space-y-6">
-          <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700">
-            <h3 className="text-lg font-bebas tracking-wider mb-4">{t.level} System</h3>
-            <div className="space-y-4">
-              <LevelBadge name="Super Man" range="81-100%" color="bg-purple-500" />
-              <LevelBadge name="Golden" range="51-80%" color="bg-amber-500" />
-              <LevelBadge name="Plutonium" range="31-50%" color="bg-cyan-500" />
-              <LevelBadge name="Silver" range="0-30%" color="bg-slate-400" />
-            </div>
-            <div className="mt-6 pt-6 border-t border-slate-700 flex items-center gap-2 text-xs text-slate-400">
-              <Info size={14} />
-              Levels are based on your win percentage
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl p-6 shadow-xl relative overflow-hidden">
-            <h3 className="text-lg font-bebas tracking-wider text-white mb-2">Refer & Earn</h3>
-            <p className="text-indigo-100 text-sm mb-4">Invite friends and get ৳15 bonus balance for every signup!</p>
-            <button 
-              onClick={() => navigate('/profile')}
-              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-sm font-bold backdrop-blur-sm transition-colors"
-            >
-              Copy Referral ID
-            </button>
-            <Send className="absolute -bottom-4 -right-4 text-white/10" size={100} />
-          </div>
+      {/* Game Grid Section */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bebas tracking-[0.1em] px-2">{t.allGames}</h2>
+        <div className="grid grid-cols-2 gap-4">
+           <GameTile 
+             title={t.ludo} 
+             mode="Classic" 
+             color="bg-gradient-to-br from-indigo-700 to-indigo-900" 
+             icon={<User size={32} />}
+             onClick={() => setShowEntryDialog(true)}
+           />
+           <GameTile 
+             title={t.speedLudo} 
+             mode="Fast" 
+             color="bg-gradient-to-br from-electric to-indigo-700" 
+             icon={<Zap size={32} />}
+             onClick={() => setShowEntryDialog(true)}
+           />
+           <GameTile 
+             title={t.tezzLeedo} 
+             mode="Pro" 
+             color="bg-gradient-to-br from-purple-600 to-indigo-950" 
+             icon={<Trophy size={32} />}
+             onClick={() => setShowEntryDialog(true)}
+           />
         </div>
+      </div>
+      
+      {/* Online Players Indicator */}
+      <div className="flex items-center justify-center gap-2 p-4 bg-white/5 rounded-2xl border border-white/5">
+        <div className="w-2 h-2 rounded-full bg-emerald animate-pulse"></div>
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-[0.1em]">2,841 {t.playersOnline}</span>
       </div>
     </div>
   );
 };
 
-const LevelBadge = ({ name, range, color }: any) => (
-  <div className="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-700/50">
-    <div className="flex items-center gap-3">
-      <div className={`w-3 h-3 rounded-full ${color}`}></div>
-      <span className="font-bold text-sm">{name}</span>
+const GameTile = ({ title, mode, color, icon, onClick }: any) => (
+  <button 
+    onClick={onClick}
+    className={`${color} rounded-[2.5rem] p-6 flex flex-col items-start text-left shadow-xl border border-white/10 group active:scale-95 transition-all overflow-hidden relative`}
+  >
+    <div className="p-3 bg-white/10 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
+      {icon}
     </div>
-    <span className="text-xs text-slate-500 font-mono">{range}</span>
-  </div>
+    <div className="relative z-10">
+      <p className="text-[10px] uppercase font-black text-white/50 tracking-[0.2em] mb-1">{mode}</p>
+      <h3 className="text-xl font-bebas tracking-widest text-white leading-tight">{title}</h3>
+    </div>
+    <ChevronRight className="absolute bottom-6 right-6 text-white/20" size={24} />
+  </button>
 );
 
 export default Home;

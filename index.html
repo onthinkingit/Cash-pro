@@ -6,26 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Win cash pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
               bebas: ['"Bebas Neue"', 'cursive'],
-              sans: ['Inter', 'sans-serif'],
+              sans: ['Montserrat', 'sans-serif'],
             },
             colors: {
-              slate: {
-                750: '#1e293b',
-                850: '#0f172a',
-                950: '#020617',
-              }
+              indigo: {
+                950: '#0f041e',
+                900: '#1a0735',
+                800: '#2E0B5B', // Deep Indigo
+              },
+              electric: '#0095FF', // Electric Blue
+              emerald: '#00C853', // Emerald Green
             },
             animation: {
               'fade-in': 'fadeIn 0.5s ease-out',
               'slide-up': 'slideUp 0.4s ease-out',
               'pulse-soft': 'pulseSoft 2s infinite',
+              'bounce-slow': 'bounce 3s infinite',
             },
             keyframes: {
               fadeIn: {
@@ -33,12 +36,12 @@
                 '100%': { opacity: '1' },
               },
               slideUp: {
-                '0%': { transform: 'translateY(10px)', opacity: '0' },
+                '0%': { transform: 'translateY(15px)', opacity: '0' },
                 '100%': { transform: 'translateY(0)', opacity: '1' },
               },
               pulseSoft: {
                 '0%, 100%': { opacity: '1' },
-                '50%': { opacity: '0.8' },
+                '50%': { opacity: '0.85' },
               }
             }
           }
@@ -47,35 +50,44 @@
     </script>
     <style>
       body {
-        font-family: 'Inter', sans-serif;
-        background-color: #020617; /* slate-950 */
-        color: #f8fafc;
+        font-family: 'Montserrat', sans-serif;
+        background: linear-gradient(180deg, #0f041e 0%, #1a0735 100%);
+        color: #ffffff;
         margin: 0;
         padding: 0;
         overflow-x: hidden;
         -webkit-tap-highlight-color: transparent;
       }
       .font-bebas {
-        font-family: 'Bebas+Neue', cursive;
+        font-family: 'Bebas Neue', cursive;
       }
       ::-webkit-scrollbar {
-        width: 5px;
+        width: 4px;
       }
       ::-webkit-scrollbar-track {
-        background: #0f172a;
+        background: #0f041e;
       }
       ::-webkit-scrollbar-thumb {
-        background: #334155;
+        background: #2E0B5B;
         border-radius: 10px;
       }
-      /* Smooth transitions for navigation */
       .page-transition {
         animation: fadeIn 0.4s ease-out;
       }
-      /* Native app feel for buttons */
       button:active {
-        transform: scale(0.96);
+        transform: scale(0.95);
         transition: transform 0.1s ease-in-out;
+      }
+      .glass {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .neon-border {
+        box-shadow: 0 0 15px rgba(0, 149, 255, 0.3);
+      }
+      .glossy-btn {
+        background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
       }
     </style>
 <script type="importmap">

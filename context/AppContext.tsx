@@ -29,12 +29,13 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const INITIAL_SETTINGS: AppSettings = {
   telegramLink: 'https://t.me/ludocashpro',
   minDeposit: 10,
-  minWithdraw: 200,
-  commissionRate: 0.06,
-  bkashNumber: '01577378394',
+  minWithdraw: 10, // Updated to 10 as per requirement
+  commissionRate: 0.06, // Default to 6% as per requirement
+  bkashNumber: '01XXXXXXXXX',
   bkashType: 'Personal',
-  nagadNumber: '01577378394',
+  nagadNumber: '01XXXXXXXXX',
   nagadType: 'Personal',
+  matchFees: [12, 20, 55, 108, 220, 500],
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -82,7 +83,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (user) {
       localStorage.setItem('ludo_user', JSON.stringify(user));
-      // Sync current user into allUsers
       setAllUsers(prev => {
         const index = prev.findIndex(u => u.id === user.id);
         if (index === -1) return [...prev, user];

@@ -2,33 +2,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { translations } from '../translations';
-import { Wallet as WalletIcon, ArrowUpCircle, ArrowDownCircle, History, Zap, FileText, Copy, CheckCircle2, Info, Camera, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { Transaction, DepositRequest, WithdrawalRequest } from '../types';
+import { Wallet as WalletIcon, ArrowUpCircle, ArrowDownCircle, History, Copy, Camera, Loader2, CheckCircle2, AlertCircle, XCircle, Gift, Info, Clock, CheckCircle, XCircle as XIcon } from 'lucide-react';
+import { DepositRequest, WithdrawalRequest } from '../types';
+import { useSearchParams } from 'react-router-dom';
 
 const Wallet: React.FC = () => {
   const { lang, user, setUser, settings, transactions, addTransaction, depositRequests, setDepositRequests, withdrawalRequests, setWithdrawalRequests, updateUserBalance, addNotification } = useApp();
   const t = translations[lang];
+  const [searchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
+  const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>((searchParams.get('tab') as any) || 'deposit');
+  const [showHistory, setShowHistory] = useState(false);
   const [amount, setAmount] = useState<string>('');
   const [txId, setTxId] = useState<string>('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [method, setMethod] = useState<'bkash' | 'nagad'>('bkash');
   const [withdrawType, setWithdrawType] = useState<'Personal' | 'Agent'>('Personal');
-  const [withdrawNumber, setWithdrawNumber] = useState<string>(user?.phone || '');
+  const [withdrawNumber, setWithdrawNumber] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [showCopyTooltip, setShowCopyTooltip] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (user && !withdrawNumber) {
-      setWithdrawNumber(user.phone);
-    }
-  }, [user]);
+  const suggestedAmounts = [50, 70, 100, 200, 500, 1000, 2000];
+
+  const showFeedback = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const calculateBonus = (amt: number) => {
-    if (amt >= 1000) return amt * 0.05;
-    if (amt >= 500) return amt * 0.02;
+    if (amt <= 499) return amt * 0.10;
     return 0;
   };
 
@@ -41,23 +45,31 @@ const Wallet: React.FC = () => {
 
   const handleDepositRequest = () => {
     if (!user) return;
-    const val = parseFloat(amount);
-    const tid = txId.trim().toUpperCase();
-
-    if (isNaN(val) || val < settings.minDeposit) {
-      alert(t.minDepositError);
+    
+    if (user.status === 'banned') {
+      showFeedback(t.bannedError, 'error');
       return;
     }
 
-    const txIdRegex = /^[A-Z0-9]{8,12}$/;
-    if (!txIdRegex.test(tid)) {
-      alert(lang === 'en' ? 'Invalid Transaction ID format! (8-12 Alphanumeric)' : 'ভুল ট্রানজেকশন আইডি ফরম্যাট! (৮-১২ আলফানিউমেরিক)');
+    const val = parseFloat(amount);
+    const tid = txId.trim().toUpperCase();
+
+    if (isNaN(val) || val <= 0) {
+      showFeedback(lang === 'en' ? "Please enter a valid amount!" : "দয়া করে সঠিক পরিমাণ লিখুন!", 'error');
+      return;
+    }
+    if (val < settings.minDeposit) {
+      showFeedback(`${t.minDepositError} (৳${settings.minDeposit})`, 'error');
+      return;
+    }
+    if (!tid) {
+      showFeedback(lang === 'en' ? "Transaction ID is mandatory!" : "ট্রানজেকশন আইডি বাধ্যতামূলক!", 'error');
       return;
     }
 
     const isDuplicate = depositRequests.some(r => r.txId === tid);
     if (isDuplicate) {
-      alert(t.duplicateTxId);
+      showFeedback(t.duplicateTxId || 'Transaction ID already used!', 'error');
       return;
     }
 
@@ -65,6 +77,7 @@ const Wallet: React.FC = () => {
     
     setTimeout(() => {
       const bonus = calculateBonus(val);
+      
       const newRequest: DepositRequest = {
         id: Math.random().toString(36).substr(2, 9),
         userId: user.id,
@@ -74,13 +87,13 @@ const Wallet: React.FC = () => {
         method,
         txId: tid,
         screenshot: screenshot || undefined,
-        status: 'approved', 
+        status: 'approved', // Simulation: instant approval for demo, but listed in history
         bonusApplied: bonus,
         timestamp: new Date().toISOString()
       };
 
-      updateUserBalance(user.id, val, bonus);
       setDepositRequests(prev => [newRequest, ...prev]);
+      updateUserBalance(user.id, val, bonus);
       
       addTransaction({
         id: Math.random().toString(36).substr(2, 9),
@@ -94,65 +107,48 @@ const Wallet: React.FC = () => {
         method: method
       });
 
-      addNotification(user.id, t.instantSuccess.replace('{amount}', val.toString()));
-
+      addNotification(user.id, `Deposit Success: ৳${val} credited instantly!`);
+      
       setAmount('');
       setTxId('');
       setScreenshot(null);
       setLoading(false);
-      alert(t.autoApproved);
-    }, 2000);
+      showFeedback(t.depositRequestSuccess, 'success');
+    }, 1500);
   };
 
   const handleWithdraw = async () => {
     if (!user) return;
+    
+    if (user.status === 'banned') {
+      showFeedback(t.bannedError, 'error');
+      return;
+    }
 
-    // RULE 1: Withdraw allowed only for active users
-    if (user.status !== 'active') {
-      alert(t.bannedError);
+    const today = new Date().toDateString();
+    const lastWithdrawalDate = user.lastWithdrawal ? new Date(user.lastWithdrawal).toDateString() : null;
+    if (lastWithdrawalDate === today) {
+      showFeedback(t.withdrawLimitError, 'error');
       return;
     }
 
     const val = parseFloat(amount);
+    if (isNaN(val) || val < settings.minWithdraw) {
+      showFeedback(`${t.minWithdrawError} (৳${settings.minWithdraw})`, 'error');
+      return;
+    }
     
-    // RULE 2: Minimum withdraw amount: 10৳
-    if (isNaN(val) || val < 10) {
-      alert(t.minWithdrawError);
-      return;
-    }
-
-    // RULE 3: Withdraw allowed only from cash balance
     if (val > user.cashBalance) {
-      alert(t.insufficientBalance);
+      showFeedback(t.insufficientBalance, 'error');
       return;
     }
 
-    // RULE 4: Block multiple pending withdraw requests
-    const hasPending = withdrawalRequests.some(r => r.userId === user.id && r.status === 'pending');
-    if (hasPending) {
-      alert(t.pendingWithdrawError);
-      return;
-    }
-
-    // RULE 5: Maximum one withdraw request per user per day
-    const today = new Date().toDateString();
-    const todayWithdraws = withdrawalRequests.filter(r => r.userId === user.id && new Date(r.timestamp).toDateString() === today);
-    if (todayWithdraws.length > 0) {
-      alert(t.withdrawLimitError);
-      return;
-    }
-
-    // RULE 6: Validate receiver number format
-    if (!withdrawNumber || withdrawNumber.length < 11 || !withdrawNumber.startsWith('01')) {
-      alert(lang === 'en' ? 'Valid receiver number required (e.g., 017...)' : 'সঠিক রিসিভার নম্বর প্রয়োজন (যেমন: ০১৭...)');
+    if (!withdrawNumber || withdrawNumber.length < 11) {
+      showFeedback(lang === 'en' ? 'Provide a valid receiver phone number (11 digits)' : 'সঠিক ১১ সংখ্যার রিসিভার নম্বর দিন', 'error');
       return;
     }
 
     setLoading(true);
-
-    // Simulate Authenticated API Call (JWT)
-    console.log("Sending withdrawal request with JWT Auth Header...");
-    
     setTimeout(() => {
       const newWithdrawal: WithdrawalRequest = {
         id: Math.random().toString(36).substr(2, 9),
@@ -165,15 +161,27 @@ const Wallet: React.FC = () => {
         status: 'pending',
         timestamp: new Date().toISOString()
       };
-
+      
+      setUser({ ...user, lastWithdrawal: new Date().toISOString() });
+      updateUserBalance(user.id, -val, 0);
       setWithdrawalRequests(prev => [newWithdrawal, ...prev]);
       
-      // Note: BALANCE IS NOT DEDUCTED HERE.
-      // Deduction happens only after admin approval.
+      addTransaction({
+        id: Math.random().toString(36).substr(2, 9),
+        userId: user.id,
+        type: 'withdraw',
+        amount: val,
+        bonusUsed: 0,
+        timestamp: new Date().toISOString(),
+        status: 'pending',
+        method: method,
+        receiverNumber: withdrawNumber
+      });
 
       setAmount('');
+      setWithdrawNumber('');
       setLoading(false);
-      alert(t.withdrawSuccess);
+      showFeedback(t.withdrawSuccess, 'success');
     }, 1500);
   };
 
@@ -181,162 +189,219 @@ const Wallet: React.FC = () => {
 
   const currentType = method === 'bkash' ? settings.bkashType : settings.nagadType;
   const actionLabel = currentType === 'Agent' ? t.cashOutTo : t.sendMoneyTo;
-  const currentBonus = calculateBonus(parseFloat(amount) || 0);
+
+  const userDeposits = depositRequests.filter(d => d.userId === user.id);
+  const userWithdrawals = withdrawalRequests.filter(w => w.userId === user.id);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10 relative">
-      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => setScreenshot(reader.result as string);
-          reader.readAsDataURL(file);
-        }
-      }} />
-      
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-8 rounded-[2rem] shadow-xl text-white relative overflow-hidden">
-          <p className="text-indigo-100 text-sm uppercase tracking-widest font-bold">{t.cashBalance}</p>
-          <p className="text-5xl font-bebas tracking-wider mt-2">৳{user.cashBalance.toFixed(2)}</p>
-          <WalletIcon className="absolute -bottom-8 -right-8 text-white/10" size={160} />
-        </div>
+    <div className="space-y-6 animate-in slide-up duration-500 max-w-lg mx-auto relative pb-20">
+      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
 
-        <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-8 rounded-[2rem] shadow-xl text-white relative overflow-hidden">
-          <p className="text-amber-100 text-sm uppercase tracking-widest font-bold">{t.bonusBalance}</p>
-          <p className="text-5xl font-bebas tracking-wider mt-2">৳{user.bonusBalance.toFixed(2)}</p>
-          <Zap className="absolute -bottom-8 -right-8 text-white/10" size={160} />
+      {toast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] w-[90%] max-w-md animate-in slide-in-from-top-4 duration-300">
+          <div className={`p-5 rounded-[2rem] shadow-2xl flex items-center gap-4 border-2 backdrop-blur-xl ${
+            toast.type === 'success' ? 'bg-emerald/90 border-white/20 text-white' : 'bg-red-600/90 border-white/20 text-white'
+          }`}>
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+              {toast.type === 'success' ? <CheckCircle2 size={28} /> : <AlertCircle size={28} />}
+            </div>
+            <div className="flex-1">
+              <h4 className="text-xl font-bebas tracking-widest">{toast.type === 'success' ? 'SUCCESS' : 'ERROR'}</h4>
+              <p className="text-xs font-bold opacity-90 leading-tight">{toast.message}</p>
+            </div>
+            <button onClick={() => setToast(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+              <XCircle size={20} />
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* Header with Balance */}
+      <div className="bg-emerald p-8 rounded-[2.5rem] shadow-2xl shadow-emerald/20 text-white relative overflow-hidden group">
+        <div className="relative z-10 flex justify-between items-start">
+          <div>
+            <p className="text-white/60 text-xs font-black uppercase tracking-[0.2em] mb-2">{t.cashBalance}</p>
+            <p className="text-6xl font-bebas tracking-wider">৳{user.cashBalance.toFixed(2)}</p>
+            <div className="mt-4 flex gap-4">
+               <div className="bg-white/20 px-4 py-2 rounded-2xl backdrop-blur-sm border border-white/10">
+                  <p className="text-[8px] uppercase font-black opacity-60">Bonus</p>
+                  <p className="text-lg font-bebas">৳{user.bonusBalance.toFixed(2)}</p>
+               </div>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowHistory(!showHistory)}
+            className={`p-4 rounded-2xl transition-all ${showHistory ? 'bg-white text-emerald' : 'bg-white/10 text-white hover:bg-white/20'}`}
+          >
+            <History size={24} />
+          </button>
+        </div>
+        <WalletIcon className="absolute -bottom-8 -right-8 text-white/10 group-hover:scale-110 transition-transform" size={160} />
       </div>
 
-      <div className="bg-slate-800 rounded-3xl p-8 border border-slate-700 shadow-xl relative overflow-hidden">
-        {loading && (
-          <div className="absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
-             <Loader2 className="text-amber-500 animate-spin mb-4" size={48} />
-             <h3 className="text-2xl font-bebas tracking-widest text-white mb-2">
-               {activeTab === 'deposit' ? t.verifying : 'Sending Request...'}
-             </h3>
-             <p className="text-slate-400 text-sm">
-               {activeTab === 'deposit' 
-                ? (lang === 'en' ? 'Checking TxID uniqueness...' : 'আইডি যাচাই করা হচ্ছে...') 
-                : (lang === 'en' ? 'Verifying account status and limits...' : 'অ্যাকাউন্ট স্ট্যাটাস যাচাই করা হচ্ছে...')}
-             </p>
-          </div>
-        )}
-
-        <div className="flex bg-slate-900 p-1 rounded-2xl mb-8">
-          <button 
-            onClick={() => setActiveTab('deposit')}
-            className={`flex-1 py-3 rounded-xl font-bebas text-xl tracking-widest transition-all ${activeTab === 'deposit' ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-          >
-            {t.deposit}
-          </button>
-          <button 
-            onClick={() => setActiveTab('withdraw')}
-            className={`flex-1 py-3 rounded-xl font-bebas text-xl tracking-widest transition-all ${activeTab === 'withdraw' ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-          >
-            {t.withdraw}
-          </button>
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-8">
-          <div className="flex-1 space-y-6">
-            <h2 className="text-2xl font-bebas tracking-wider flex items-center gap-2 text-white">
-              {activeTab === 'deposit' ? <ArrowUpCircle className="text-green-500" /> : <ArrowDownCircle className="text-red-500" />}
-              {activeTab === 'deposit' ? t.deposit : t.withdraw}
-            </h2>
-
-            <div className="space-y-4">
-              <label className="text-sm text-slate-400 font-bold uppercase tracking-widest">{t.selectMethod}</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setMethod('bkash')} className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${method === 'bkash' ? 'border-pink-500 bg-pink-500/10' : 'border-slate-700'}`}>
-                  <span className="text-pink-500 font-bold uppercase tracking-widest">bKash</span>
-                  {activeTab === 'deposit' && <span className="text-[10px] text-slate-400">{settings.bkashType}</span>}
-                </button>
-                <button onClick={() => setMethod('nagad')} className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${method === 'nagad' ? 'border-orange-500 bg-orange-500/10' : 'border-slate-700'}`}>
-                  <span className="text-orange-500 font-bold uppercase tracking-widest">Nagad</span>
-                  {activeTab === 'deposit' && <span className="text-[10px] text-slate-400">{settings.nagadType}</span>}
-                </button>
-              </div>
+      {!showHistory ? (
+        <>
+          {activeTab === 'deposit' && (
+            <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 rounded-2xl flex items-center gap-4 shadow-lg shadow-orange-500/20 animate-pulse">
+               <div className="bg-white/20 p-2 rounded-xl">
+                  <Gift className="text-white" size={24} />
+               </div>
+               <div>
+                  <p className="text-[10px] font-black uppercase text-white/70 tracking-widest">Special Promo</p>
+                  <p className="text-xs font-bold text-white">Get 10% bonus on deposits up to ৳499!</p>
+               </div>
             </div>
+          )}
 
-            {activeTab === 'deposit' ? (
-              <div className="space-y-6">
-                <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-700 text-center relative overflow-hidden">
-                  <p className="text-xs text-amber-500 uppercase font-bold mb-2 tracking-widest animate-pulse">{actionLabel}</p>
-                  <div className="flex items-center justify-center gap-3 relative">
-                    <p className="text-3xl font-bebas text-white tracking-wider">
-                      {method === 'bkash' ? settings.bkashNumber : settings.nagadNumber}
-                    </p>
-                    <button onClick={handleCopyNumber} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-amber-500 transition-colors shadow-sm"><Copy size={18} /></button>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-2 font-medium">{t.bonusLogic}</p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-sm text-slate-400 font-bold uppercase tracking-tighter">Amount (৳)</label>
-                      {currentBonus > 0 && <span className="text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded-lg">{t.bonusPreview.replace('{amount}', currentBonus.toString())}</span>}
-                    </div>
-                    <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-3 px-4 text-xl font-bold focus:outline-none focus:border-amber-500 text-white" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-slate-400 font-bold uppercase tracking-tighter">{t.txIdLabel}</label>
-                    <input type="text" value={txId} onChange={(e) => setTxId(e.target.value)} placeholder="8XJ9K2L0" className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-3 px-4 text-xl font-bold focus:outline-none focus:border-amber-500 text-white" />
-                  </div>
-                  <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-slate-700 hover:border-amber-500 transition-colors rounded-2xl p-4 flex flex-col items-center gap-2 group">
-                    {screenshot ? <div className="relative"><img src={screenshot} alt="Screenshot" className="h-20 w-auto rounded-lg" /><span className="absolute -top-2 -right-2 bg-amber-500 text-white p-1 rounded-full"><CheckCircle2 size={12}/></span></div> : <><Camera className="text-slate-500 group-hover:text-amber-500" /><span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.uploadScreenshot}</span></>}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="space-y-4 animate-in fade-in duration-300">
-                  <label className="text-sm text-slate-400 font-bold uppercase tracking-widest">{t.methodType}</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setWithdrawType('Personal')} className={`py-3 rounded-xl border-2 transition-all font-bold text-xs uppercase tracking-widest ${withdrawType === 'Personal' ? 'border-amber-500 bg-amber-500/10 text-amber-500' : 'border-slate-700 text-slate-500'}`}>{t.personal}</button>
-                    <button onClick={() => setWithdrawType('Agent')} className={`py-3 rounded-xl border-2 transition-all font-bold text-xs uppercase tracking-widest ${withdrawType === 'Agent' ? 'border-amber-500 bg-amber-500/10 text-amber-500' : 'border-slate-700 text-slate-500'}`}>{t.agent}</button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-400 font-bold uppercase tracking-tighter">{t.withdrawNumber}</label>
-                  <input type="tel" value={withdrawNumber} onChange={(e) => setWithdrawNumber(e.target.value)} placeholder="01xxxxxxxxx" className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-3 px-4 text-xl font-bold focus:outline-none focus:border-amber-500 text-white placeholder:text-slate-700" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-400 font-bold uppercase tracking-tighter">Withdrawal Amount (৳)</label>
-                  <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="10.00" className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-3 px-4 text-xl font-bold focus:outline-none focus:border-amber-500 text-white" />
-                  <p className="text-[10px] text-slate-500 italic">Available Cash: ৳{user.cashBalance.toFixed(2)}</p>
-                </div>
+          <div className="bg-indigo-900 rounded-[2.5rem] p-6 border border-white/10 shadow-xl relative overflow-hidden">
+            {loading && (
+              <div className="absolute inset-0 z-50 bg-indigo-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+                 <Loader2 className="text-electric animate-spin mb-4" size={48} />
+                 <h3 className="text-2xl font-bebas tracking-widest text-white mb-2">{activeTab === 'deposit' ? 'Verifying...' : 'Processing...'}</h3>
               </div>
             )}
 
-            <button disabled={loading} onClick={activeTab === 'deposit' ? handleDepositRequest : handleWithdraw} className={`w-full py-4 rounded-2xl font-bebas text-2xl tracking-widest shadow-lg text-white transition-all active:scale-95 ${activeTab === 'deposit' ? 'bg-green-500 hover:bg-green-600 shadow-green-500/20' : 'bg-red-500 hover:bg-red-600 shadow-red-500/20'}`}>
-              {loading ? (activeTab === 'deposit' ? 'Verifying...' : 'Processing...') : (activeTab === 'deposit' ? t.deposit : t.withdraw)}
-            </button>
+            <div className="flex bg-indigo-950 p-1 rounded-3xl mb-8">
+              <button onClick={() => setActiveTab('deposit')} className={`flex-1 py-4 rounded-[1.5rem] font-bebas text-2xl tracking-widest transition-all ${activeTab === 'deposit' ? 'bg-electric text-white shadow-xl' : 'text-slate-500'}`}>{t.deposit}</button>
+              <button onClick={() => setActiveTab('withdraw')} className={`flex-1 py-4 rounded-[1.5rem] font-bebas text-2xl tracking-widest transition-all ${activeTab === 'withdraw' ? 'bg-electric text-white shadow-xl' : 'text-slate-500'}`}>{t.withdraw}</button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] px-2">{t.selectMethod}</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button onClick={() => setMethod('bkash')} className={`p-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-2 ${method === 'bkash' ? 'border-pink-500 bg-pink-500/10' : 'border-white/5 bg-white/5'}`}>
+                    <span className="text-pink-500 font-black uppercase tracking-widest text-sm">bKash</span>
+                  </button>
+                  <button onClick={() => setMethod('nagad')} className={`p-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-2 ${method === 'nagad' ? 'border-orange-500 bg-orange-500/10' : 'border-white/5 bg-white/5'}`}>
+                    <span className="text-orange-500 font-black uppercase tracking-widest text-sm">Nagad</span>
+                  </button>
+                </div>
+              </div>
+
+              {activeTab === 'deposit' && (
+                <div className="bg-indigo-950/50 p-6 rounded-3xl border border-white/5 text-center animate-in fade-in zoom-in-95 duration-200">
+                  <p className="text-[10px] text-electric uppercase font-black mb-3 tracking-[0.2em]">{actionLabel}</p>
+                  <div className="flex items-center justify-center gap-3">
+                    <p className="text-3xl font-bebas text-white tracking-widest">
+                      {method === 'bkash' ? settings.bkashNumber : settings.nagadNumber}
+                    </p>
+                    <button onClick={handleCopyNumber} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-white transition-colors"><Copy size={18} /></button>
+                  </div>
+                  {showCopyTooltip && <p className="text-[10px] text-emerald font-bold mt-2 animate-bounce">{t.copied}</p>}
+                </div>
+              )}
+
+              <div className="space-y-5">
+                <div className="space-y-3">
+                  <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{t.suggestedAmounts}</label>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedAmounts.map(amt => (
+                      <button key={amt} onClick={() => setAmount(amt.toString())} className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${parseFloat(amount) === amt ? 'bg-electric border-electric text-white' : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'}`}>{amt}৳</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest px-2">Amount (৳)</label>
+                  <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full bg-indigo-950 border border-white/10 rounded-3xl py-4 px-6 text-2xl font-black focus:outline-none focus:border-electric transition-all text-white placeholder:text-slate-800" />
+                </div>
+
+                {activeTab === 'deposit' ? (
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest px-2">{t.txIdLabel}</label>
+                      <input type="text" value={txId} onChange={(e) => setTxId(e.target.value)} placeholder="8XJ9K2L0" className="w-full bg-indigo-950 border border-white/10 rounded-3xl py-4 px-6 text-2xl font-black focus:outline-none focus:border-electric transition-all text-white placeholder:text-slate-800" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+                    <div className="space-y-3">
+                      <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest px-2">{t.methodType}</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button onClick={() => setWithdrawType('Personal')} className={`py-3 rounded-2xl font-bold text-xs uppercase tracking-widest border transition-all ${withdrawType === 'Personal' ? 'border-electric bg-electric/10 text-electric' : 'border-white/10 bg-white/5 text-slate-500'}`}>{t.personal}</button>
+                        <button onClick={() => setWithdrawType('Agent')} className={`py-3 rounded-2xl font-bold text-xs uppercase tracking-widest border transition-all ${withdrawType === 'Agent' ? 'border-electric bg-electric/10 text-electric' : 'border-white/10 bg-white/5 text-slate-500'}`}>{t.agent}</button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest px-2">Your {method.toUpperCase()} Number</label>
+                      <input type="tel" value={withdrawNumber} onChange={(e) => setWithdrawNumber(e.target.value)} placeholder="01xxxxxxxxx" className="w-full bg-indigo-950 border border-white/10 rounded-3xl py-4 px-6 text-2xl font-black focus:outline-none focus:border-electric transition-all text-white placeholder:text-slate-800" />
+                    </div>
+                  </div>
+                )}
+
+                <button disabled={loading} onClick={activeTab === 'deposit' ? handleDepositRequest : handleWithdraw} className={`w-full py-5 rounded-3xl font-bebas text-3xl tracking-widest shadow-2xl transition-all active:scale-95 ${activeTab === 'deposit' ? 'bg-emerald shadow-emerald/20' : 'bg-red-600 shadow-red-600/20'}`}>
+                  {loading ? '...' : (activeTab === 'deposit' ? t.deposit : t.withdraw)}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="bg-indigo-900 rounded-[2.5rem] p-6 border border-white/10 shadow-xl space-y-8 animate-in slide-in-from-right-4 duration-300">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-bebas tracking-widest text-white">Transaction History</h3>
+            <button onClick={() => setShowHistory(false)} className="text-slate-500 hover:text-white"><XCircle size={24} /></button>
           </div>
 
-          <div className="flex-1 space-y-6">
-            <h2 className="text-2xl font-bebas tracking-wider flex items-center gap-2 text-white"><History className="text-amber-500" />{t.transactionLogs}</h2>
-            <div className="space-y-3 max-h-[550px] overflow-auto pr-2 custom-scrollbar">
-              {depositRequests.filter(d => d.userId === user.id).map(req => (
-                <div key={req.id} className="bg-slate-900 p-4 rounded-2xl border border-slate-700/50 flex items-center justify-between border-l-4 border-l-amber-500 text-white">
-                   <div className="flex items-center gap-3">
-                    {req.screenshot ? <ImageIcon size={20} className="text-amber-500" /> : <FileText size={20} className="text-amber-500" />}
-                    <div><p className="font-bold text-sm">Deposit: ৳{req.amount}</p><p className="text-[10px] text-slate-500">{req.method.toUpperCase()} | {req.txId}</p>{req.status === 'approved' && <p className="text-[9px] text-green-400 font-bold uppercase tracking-widest mt-1">✓ Instantly Verified</p>}</div>
+          <div className="space-y-6">
+            {/* Deposits Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-black uppercase tracking-[0.2em] text-emerald flex items-center gap-2">
+                <ArrowUpCircle size={16} /> {t.deposit} History
+              </h4>
+              <div className="space-y-3">
+                {userDeposits.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic px-2">No deposit history found.</p>
+                ) : userDeposits.map(dep => (
+                  <div key={dep.id} className="bg-indigo-950 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-white">৳{dep.amount}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-black">{dep.method} | {new Date(dep.timestamp).toLocaleDateString()}</p>
+                    </div>
+                    <StatusBadge status={dep.status} />
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-1 rounded ${req.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : req.status === 'approved' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>{req.status.toUpperCase()}</span>
-                </div>
-              ))}
-              {withdrawalRequests.filter(w => w.userId === user.id).map(req => (
-                <div key={req.id} className="bg-slate-900 p-4 rounded-2xl border border-slate-700/50 flex items-center justify-between border-l-4 border-l-red-500 text-white">
-                   <div className="flex items-center gap-3"><FileText size={20} className="text-red-500" /><div><p className="font-bold text-sm">Withdraw: ৳{req.amount}</p><p className="text-[10px] text-slate-500">{req.method.toUpperCase()} {req.accountType} | {req.receiverNumber}</p>{req.adminNote && <p className="text-[9px] text-red-400 italic mt-1">Note: {req.adminNote}</p>}</div></div>
-                  <span className={`text-[10px] font-bold px-2 py-1 rounded ${req.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : req.status === 'approved' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>{req.status.toUpperCase()}</span>
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+
+            {/* Withdrawals Section */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-black uppercase tracking-[0.2em] text-red-500 flex items-center gap-2">
+                <ArrowDownCircle size={16} /> {t.withdraw} History
+              </h4>
+              <div className="space-y-3">
+                {userWithdrawals.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic px-2">No withdrawal history found.</p>
+                ) : userWithdrawals.map(wit => (
+                  <div key={wit.id} className="bg-indigo-950 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-white">৳{wit.amount}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-black">{wit.method} | {new Date(wit.timestamp).toLocaleDateString()}</p>
+                    </div>
+                    <StatusBadge status={wit.status} />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
+    </div>
+  );
+};
+
+const StatusBadge = ({ status }: { status: string }) => {
+  const config = {
+    pending: { color: 'text-amber-500 bg-amber-500/10', icon: <Clock size={12} />, label: 'Pending' },
+    approved: { color: 'text-emerald bg-emerald/10', icon: <CheckCircle size={12} />, label: 'Approved' },
+    rejected: { color: 'text-red-500 bg-red-500/10', icon: <XIcon size={12} />, label: 'Rejected' }
+  }[status] || { color: 'text-slate-500 bg-slate-500/10', icon: <Clock size={12} />, label: status };
+
+  return (
+    <div className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 ${config.color}`}>
+      {config.icon}
+      <span className="text-[10px] font-black uppercase tracking-widest">{config.label}</span>
     </div>
   );
 };
