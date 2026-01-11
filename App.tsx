@@ -9,10 +9,10 @@ import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 import GameRoom from './pages/GameRoom';
 import { translations } from './translations';
-import { PlayerLevel, Transaction } from './types';
+import { PlayerLevel } from './types';
 
 const AppContent: React.FC = () => {
-  const { isLoggedIn, user, setUser, lang, addTransaction } = useApp();
+  const { isLoggedIn, user, setUser, lang } = useApp();
   const t = translations[lang];
 
   const [isLogin, setIsLogin] = useState(true);
@@ -23,22 +23,21 @@ const AppContent: React.FC = () => {
   const [otp, setOtp] = useState('');
 
   const handleAuth = () => {
-    // Admin Login Check
     if (phone === '01577378394' && password === 'AnAmFJAaj@1') {
       setUser({
         id: 'admin_1',
         phone,
         username: 'Admin',
         customId: 'ADMIN001',
-        cashBalance: 0,
-        bonusBalance: 0,
+        cashBalance: 1000,
+        bonusBalance: 500,
         referralCode: 'ADMINPRO',
-        matchesPlayed: 0,
-        wins: 0,
-        losses: 0,
+        matchesPlayed: 150,
+        wins: 120,
+        losses: 30,
         level: PlayerLevel.SUPERMAN,
-        referralCount: 0,
-        totalReferralBonus: 0,
+        referralCount: 45,
+        totalReferralBonus: 675,
         isAdmin: true,
         status: 'active',
         referrals: []
@@ -51,14 +50,13 @@ const AppContent: React.FC = () => {
       return;
     }
 
-    // Normal User Flow
     const generatedUserId = `LUDO${Math.floor(1000 + Math.random() * 9000)}`;
     const newUser = {
       id: Math.random().toString(36).substr(2, 9),
       phone,
       username: `User_${phone.substr(-4)}`,
       customId: generatedUserId,
-      cashBalance: isLogin ? 100 : 0, // Initial balance
+      cashBalance: isLogin ? 100 : 0,
       bonusBalance: 0,
       referralCode: Math.random().toString(36).substr(2, 6).toUpperCase(),
       matchesPlayed: 0,
@@ -71,7 +69,6 @@ const AppContent: React.FC = () => {
       referrals: []
     };
 
-    // If registered with referral code, simulate bonus
     if (!isLogin && referralCode.length > 3) {
       newUser.bonusBalance = 15;
       alert(t.referralBonusMsg);
@@ -82,58 +79,81 @@ const AppContent: React.FC = () => {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md space-y-8 bg-slate-800 p-8 rounded-[2.5rem] border border-slate-700 shadow-2xl relative overflow-hidden">
-          <div className="relative z-10">
-            <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center font-bebas text-4xl mx-auto mb-6 shadow-xl shadow-amber-500/20">W</div>
-            <h1 className="text-3xl font-bebas text-center tracking-widest mb-2">{isLogin ? t.login : t.register}</h1>
-            <p className="text-slate-400 text-center text-sm mb-8">Premium Cash Gaming Experience</p>
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 overflow-hidden">
+        {/* Background Accents */}
+        <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-            <div className="space-y-4">
+        <div className="w-full max-w-md z-10 animate-slide-up">
+          <div className="text-center mb-10">
+            <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-orange-600 rounded-3xl flex items-center justify-center font-bebas text-6xl mx-auto mb-4 shadow-2xl shadow-orange-500/30 transform rotate-3">
+              W
+            </div>
+            <h1 className="text-5xl font-bebas tracking-[0.2em] text-white">WIN CASH PRO</h1>
+            <p className="text-slate-400 font-medium tracking-widest text-xs mt-2 uppercase">Earn while you play</p>
+          </div>
+
+          <div className="bg-slate-900/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-700/50 shadow-2xl space-y-6">
+            <div className="flex gap-4 mb-4">
+              <button 
+                onClick={() => { setIsLogin(true); setOtpSent(false); }}
+                className={`flex-1 pb-4 text-center font-bebas text-2xl tracking-widest transition-all border-b-2 ${isLogin ? 'text-amber-500 border-amber-500' : 'text-slate-500 border-transparent'}`}
+              >
+                {t.login}
+              </button>
+              <button 
+                onClick={() => { setIsLogin(false); setOtpSent(false); }}
+                className={`flex-1 pb-4 text-center font-bebas text-2xl tracking-widest transition-all border-b-2 ${!isLogin ? 'text-amber-500 border-amber-500' : 'text-slate-500 border-transparent'}`}
+              >
+                {t.register}
+              </button>
+            </div>
+
+            <div className="space-y-5">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.phone}</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{t.phone}</label>
                 <input 
                   type="tel" 
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="01xxxxxxxxx"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors text-white"
+                  className="w-full bg-slate-950/50 border border-slate-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-white font-medium"
                 />
               </div>
 
               {phone === '01577378394' ? (
                 <div className="space-y-2 animate-in slide-in-from-top-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest text-amber-500">Admin Password</label>
+                  <label className="text-[10px] font-bold text-amber-500/70 uppercase tracking-widest ml-1">Secure Admin Key</label>
                   <input 
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-900 border border-amber-500 rounded-xl px-4 py-3 focus:outline-none text-white"
+                    className="w-full bg-slate-950/50 border border-amber-500/50 rounded-2xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-amber-500 text-white font-mono"
                   />
                 </div>
               ) : (
                 <>
                   {otpSent && (
                     <div className="space-y-2 animate-in slide-in-from-top-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.otp}</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{t.otp}</label>
                       <input 
                         type="text" 
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
                         placeholder="123456"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 text-white"
+                        className="w-full bg-slate-950/50 border border-slate-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-amber-500 text-white tracking-[0.5em] font-bold text-center"
                       />
                     </div>
                   )}
                   {!isLogin && !otpSent && (
                     <div className="space-y-2 animate-in slide-in-from-top-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.referralCode}</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{t.referralCode}</label>
                       <input 
                         type="text" 
                         value={referralCode}
                         onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                        placeholder="ABCD12"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 text-white"
+                        placeholder="OPTIONAL"
+                        className="w-full bg-slate-950/50 border border-slate-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-amber-500 text-white font-bold uppercase tracking-widest"
                       />
                     </div>
                   )}
@@ -142,23 +162,16 @@ const AppContent: React.FC = () => {
 
               <button 
                 onClick={handleAuth}
-                className="w-full bg-amber-500 hover:bg-amber-600 py-4 rounded-xl font-bebas text-2xl tracking-widest transition-all shadow-lg shadow-amber-500/20 active:scale-95 mt-4"
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 py-5 rounded-2xl font-bebas text-3xl tracking-widest text-white transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98] mt-4"
               >
-                {otpSent || phone === '01577378394' ? 'Confirm' : 'Send OTP'}
+                {otpSent || phone === '01577378394' ? 'AUTHENTICATE' : 'GET VERIFIED'}
               </button>
-
-              <p className="text-center text-slate-500 text-xs pt-4">
-                {isLogin ? "Don't have an account?" : "Already have an account?"}
-                <button 
-                  onClick={() => { setIsLogin(!isLogin); setOtpSent(false); }}
-                  className="ml-2 text-amber-500 font-bold hover:underline"
-                >
-                  {isLogin ? t.register : t.login}
-                </button>
-              </p>
             </div>
           </div>
-          <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl"></div>
+          
+          <p className="text-center text-slate-500 text-xs mt-8 tracking-widest font-medium">
+            © 2024 WIN CASH PRO. ALL RIGHTS RESERVED.
+          </p>
         </div>
       </div>
     );

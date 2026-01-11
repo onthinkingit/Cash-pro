@@ -3,31 +3,79 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Win cash pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              bebas: ['"Bebas Neue"', 'cursive'],
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              slate: {
+                750: '#1e293b',
+                850: '#0f172a',
+                950: '#020617',
+              }
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-out',
+              'slide-up': 'slideUp 0.4s ease-out',
+              'pulse-soft': 'pulseSoft 2s infinite',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(10px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+              pulseSoft: {
+                '0%, 100%': { opacity: '1' },
+                '50%': { opacity: '0.8' },
+              }
+            }
+          }
+        }
+      }
+    </script>
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #0f172a;
-        color: white;
+        background-color: #020617; /* slate-950 */
+        color: #f8fafc;
         margin: 0;
         padding: 0;
         overflow-x: hidden;
+        -webkit-tap-highlight-color: transparent;
       }
       .font-bebas {
         font-family: 'Bebas+Neue', cursive;
       }
       ::-webkit-scrollbar {
-        width: 6px;
+        width: 5px;
       }
       ::-webkit-scrollbar-track {
-        background: #1e293b;
+        background: #0f172a;
       }
       ::-webkit-scrollbar-thumb {
         background: #334155;
         border-radius: 10px;
+      }
+      /* Smooth transitions for navigation */
+      .page-transition {
+        animation: fadeIn 0.4s ease-out;
+      }
+      /* Native app feel for buttons */
+      button:active {
+        transform: scale(0.96);
+        transition: transform 0.1s ease-in-out;
       }
     </style>
 <script type="importmap">
