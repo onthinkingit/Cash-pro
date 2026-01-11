@@ -12,6 +12,8 @@ export interface User {
   id: string;
   phone: string;
   username: string;
+  avatar?: string; // Base64 or URL
+  customId: string;
   cashBalance: number;
   bonusBalance: number;
   referralCode: string;
@@ -24,6 +26,8 @@ export interface User {
   totalReferralBonus: number;
   isAdmin?: boolean;
   status: 'active' | 'banned';
+  lastWithdrawal?: string;
+  referrals: string[];
 }
 
 export interface Transaction {
@@ -34,20 +38,35 @@ export interface Transaction {
   bonusUsed: number;
   timestamp: string;
   status: 'completed' | 'pending' | 'failed';
+  txId?: string;
+}
+
+export interface DepositRequest {
+  id: string;
+  userId: string;
+  username: string;
+  phone: string;
+  amount: number;
+  method: 'bkash' | 'nagad';
+  txId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  timestamp: string;
 }
 
 export interface AppSettings {
   telegramLink: string;
   minDeposit: number;
   minWithdraw: number;
-  commissionRate: number; // e.g. 0.06
+  commissionRate: number;
   bkashNumber: string;
+  bkashType: 'Personal' | 'Agent';
   nagadNumber: string;
+  nagadType: 'Personal' | 'Agent';
 }
 
 export interface Match {
   id: string;
-  players: string[]; // User IDs
+  players: string[];
   entryFee: number;
   prizePool: number;
   mode: '2P' | '4P';

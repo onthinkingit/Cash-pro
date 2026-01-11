@@ -2,7 +2,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { translations } from '../translations';
-import { Home, Wallet, User, Shield, LogOut, MessageSquare } from 'lucide-react';
+import { Home, Wallet, User as UserIcon, Shield, LogOut, MessageSquare } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -16,10 +16,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <div className="min-h-screen pb-20 md:pb-0 md:pl-20 bg-slate-900 text-white flex flex-col">
       {/* Desktop Sidebar */}
       <nav className="hidden md:flex flex-col fixed left-0 top-0 bottom-0 w-20 bg-slate-800 border-r border-slate-700 items-center py-8 space-y-8 z-50">
-        <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center font-bebas text-2xl">L</div>
+        <Link to="/" className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center font-bebas text-2xl overflow-hidden">
+          {user?.avatar ? (
+            <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+          ) : (
+            "W"
+          )}
+        </Link>
         <NavItem to="/" icon={<Home />} label={t.playNow} active={isActive('/')} />
         <NavItem to="/wallet" icon={<Wallet />} label={t.wallet} active={isActive('/wallet')} />
-        <NavItem to="/profile" icon={<User />} label={t.profile} active={isActive('/profile')} />
+        <NavItem to="/profile" icon={<UserIcon />} label={t.profile} active={isActive('/profile')} />
         {user?.isAdmin && (
           <NavItem to="/admin" icon={<Shield />} label={t.admin} active={isActive('/admin')} />
         )}
@@ -39,8 +45,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between p-4 bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
         <div className="flex items-center gap-2">
-           <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center font-bebas text-xl">L</div>
-           <span className="font-bebas text-xl tracking-wider">LUDO CASH PRO</span>
+           <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center font-bebas text-xl overflow-hidden">
+              {user?.avatar ? (
+                <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                "W"
+              )}
+           </div>
+           <span className="font-bebas text-xl tracking-wider">WIN CASH PRO</span>
         </div>
         <div className="flex items-center gap-4">
            <button 
@@ -67,7 +79,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <nav className="md:hidden flex fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 h-16 items-center justify-around px-2 z-50">
         <MobileNavItem to="/" icon={<Home />} active={isActive('/')} />
         <MobileNavItem to="/wallet" icon={<Wallet />} active={isActive('/wallet')} />
-        <MobileNavItem to="/profile" icon={<User />} active={isActive('/profile')} />
+        <MobileNavItem to="/profile" icon={<UserIcon />} active={isActive('/profile')} />
         {user?.isAdmin && (
           <MobileNavItem to="/admin" icon={<Shield />} active={isActive('/admin')} />
         )}
