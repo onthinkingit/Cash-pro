@@ -29,8 +29,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const INITIAL_SETTINGS: AppSettings = {
   telegramLink: 'https://t.me/ludocashpro',
   minDeposit: 10,
-  minWithdraw: 10, // Updated to 10 as per requirement
-  commissionRate: 0.06, // Default to 6% as per requirement
+  minWithdraw: 10,
+  commissionRate: 0.06,
   bkashNumber: '01XXXXXXXXX',
   bkashType: 'Personal',
   nagadNumber: '01XXXXXXXXX',
@@ -52,7 +52,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem('ludo_lang');
     if (saved) return saved as Language;
-    return navigator.language.startsWith('bn') ? 'bn' : 'en';
+    // Default to English ('en') as requested
+    return 'en';
   });
 
   const [settings, setSettings] = useState<AppSettings>(() => {

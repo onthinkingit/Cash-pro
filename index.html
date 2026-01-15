@@ -6,104 +6,149 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Win cash pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Bebas+Neue&family=Poppins:wght@400;600;700&family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
               bebas: ['"Bebas Neue"', 'cursive'],
-              sans: ['Montserrat', 'sans-serif'],
+              sans: ['Montserrat', '"Hind Siliguri"', 'sans-serif'],
+              montserrat: ['Montserrat', 'sans-serif'],
+              poppins: ['Poppins', 'sans-serif'],
+              bengali: ['"Hind Siliguri"', 'sans-serif'],
             },
             colors: {
-              indigo: {
-                950: '#0f041e',
-                900: '#1a0735',
-                800: '#2E0B5B', // Deep Indigo
+              brand: {
+                black: '#0F0F1A',
+                dark: '#1A1F2E',
+                surface: '#252A3D',
+                accent: '#00D9FF',
+                secondary: '#FF2E63',
+                success: '#22C55E',
+                gold: '#FFC107',
               },
-              electric: '#0095FF', // Electric Blue
-              emerald: '#00C853', // Emerald Green
             },
             animation: {
-              'fade-in': 'fadeIn 0.5s ease-out',
-              'slide-up': 'slideUp 0.4s ease-out',
-              'pulse-soft': 'pulseSoft 2s infinite',
-              'bounce-slow': 'bounce 3s infinite',
+              'fade-in': 'fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+              'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+              'pulse-glow': 'pulseGlow 2s infinite',
+              'dice-spin': 'diceSpin 0.6s ease-in-out',
+              'float': 'float 3s ease-in-out infinite',
+              'token-pulse': 'tokenPulse 1.5s ease-in-out infinite',
+              'shake': 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both',
+              'particle-out': 'particleOut 0.6s ease-out forwards',
             },
             keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
+              fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
               slideUp: {
-                '0%': { transform: 'translateY(15px)', opacity: '0' },
+                '0%': { transform: 'translateY(20px)', opacity: '0' },
                 '100%': { transform: 'translateY(0)', opacity: '1' },
               },
-              pulseSoft: {
-                '0%, 100%': { opacity: '1' },
-                '50%': { opacity: '0.85' },
+              pulseGlow: {
+                '0%, 100%': { opacity: '1', filter: 'brightness(1)' },
+                '50%': { opacity: '0.8', filter: 'brightness(1.5)' },
+              },
+              diceSpin: {
+                '0%': { transform: 'rotate(0deg) scale(1)' },
+                '50%': { transform: 'rotate(180deg) scale(1.2)' },
+                '100%': { transform: 'rotate(360deg) scale(1)' },
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0px)' },
+                '50%': { transform: 'translateY(-10px)' },
+              },
+              tokenPulse: {
+                '0%, 100%': { transform: 'scale(1)' },
+                '50%': { transform: 'scale(1.12)' },
+              },
+              shake: {
+                '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
+                '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
+                '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
+                '40%, 60%': { transform: 'translate3d(4px, 0, 0)' },
+              },
+              particleOut: {
+                '0%': { transform: 'translate(0,0) scale(1)', opacity: '1' },
+                '100%': { transform: 'translate(var(--tx), var(--ty)) scale(0)', opacity: '0' }
               }
             }
           }
         }
-      }
+      };
     </script>
     <style>
       body {
-        font-family: 'Montserrat', sans-serif;
-        background: linear-gradient(180deg, #0f041e 0%, #1a0735 100%);
-        color: #ffffff;
+        font-family: 'Montserrat', 'Hind Siliguri', sans-serif;
+        background: #0F0F1A;
+        color: #E2E8F0;
         margin: 0;
         padding: 0;
         overflow-x: hidden;
         -webkit-tap-highlight-color: transparent;
+        letter-spacing: -0.01em;
       }
-      .font-bebas {
-        font-family: 'Bebas Neue', cursive;
+      .font-bebas { font-family: 'Bebas Neue', cursive; letter-spacing: 0.02em; }
+      .font-montserrat { font-family: 'Montserrat', sans-serif; }
+      .font-poppins { font-family: 'Poppins', sans-serif; }
+      .font-bengali { font-family: 'Hind Siliguri', sans-serif; }
+      
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-track { background: #0F0F1A; }
+      ::-webkit-scrollbar-thumb { background: #252A3D; border-radius: 10px; }
+
+      .glass-morphism {
+        background: rgba(26, 31, 46, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
-      ::-webkit-scrollbar {
-        width: 4px;
+      
+      .cell-inner-shadow {
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
       }
-      ::-webkit-scrollbar-track {
-        background: #0f041e;
+
+      .token-3d {
+        box-shadow: 0 4px 0 rgba(0,0,0,0.3), 0 8px 16px rgba(0,0,0,0.4);
+        background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 50%);
       }
-      ::-webkit-scrollbar-thumb {
-        background: #2E0B5B;
-        border-radius: 10px;
+
+      .btn-premium {
+        background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+        box-shadow: 0 4px 15px rgba(0, 217, 255, 0.2);
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       }
-      .page-transition {
-        animation: fadeIn 0.4s ease-out;
+      .btn-premium:active { transform: scale(0.95); }
+
+      .ludo-board-base {
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6);
       }
-      button:active {
-        transform: scale(0.95);
-        transition: transform 0.1s ease-in-out;
+
+      @keyframes fireworks {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(1.5); opacity: 0; }
       }
-      .glass {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-      }
-      .neon-border {
-        box-shadow: 0 0 15px rgba(0, 149, 255, 0.3);
-      }
-      .glossy-btn {
-        background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+      
+      .prize-badge {
+        background: linear-gradient(90deg, #FFC107 0%, #FF9800 100%);
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
       }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
-    "recharts": "https://esm.sh/recharts@^3.6.0"
-  }
-}
-</script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react/": "https://esm.sh/react@^19.2.3/",
+        "react": "https://esm.sh/react@^19.2.3",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+        "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+        "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+        "recharts": "https://esm.sh/recharts@^3.6.0",
+        "@google/genai": "https://esm.sh/@google/genai@^1.35.0"
+      }
+    }
+    </script>
 </head>
 <body>
     <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>

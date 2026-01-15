@@ -1,10 +1,52 @@
 
 export type Language = 'en' | 'bn';
 
+export type PlayerColor = 'RED' | 'GREEN' | 'YELLOW' | 'BLUE';
+
+export interface Token {
+  id: number;
+  color: PlayerColor;
+  position: number; // -1 (Base), 0-51 (Main Path), 52-56 (Home Stretch), 57 (Finished)
+  stackOffset: number; // For visual stacking when multiple tokens are on one spot
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderColor: PlayerColor;
+  text: string;
+  timestamp: string;
+}
+
+export interface Player {
+  id: string;
+  username: string;
+  avatar?: string;
+  level?: PlayerLevel;
+  color: PlayerColor;
+  tokens: Token[];
+  isBot: boolean;
+  isActive: boolean;
+  missedTurns: number; // New property to track missed turns
+}
+
+export interface GameState {
+  id: string;
+  players: Player[];
+  currentTurn: PlayerColor;
+  diceValue: number | null;
+  status: 'waiting' | 'rolling' | 'moving' | 'ended';
+  history: string[];
+  winner: PlayerColor | null;
+  rollExtra: boolean;
+  chatMessages: ChatMessage[]; // New property for in-game chat
+}
+
 export enum PlayerLevel {
   SILVER = 'Silver',
-  PLUTONIUM = 'Plutonium',
   GOLDEN = 'Golden',
+  PLATINUM = 'Platinum',
   SUPERMAN = 'Super Man'
 }
 
@@ -14,33 +56,43 @@ export interface User {
   username: string;
   avatar?: string;
   customId: string;
-  cashBalance: number;
+  cashBalance: number; // In-game coins
   bonusBalance: number;
   referralCode: string;
-  referredBy?: string;
   matchesPlayed: number;
   wins: number;
   losses: number;
   level: PlayerLevel;
+  status: 'active' | 'banned';
+  isAdmin?: boolean;
+  lastWithdrawal?: string;
   referralCount: number;
   totalReferralBonus: number;
-  isAdmin?: boolean;
-  status: 'active' | 'banned';
-  lastWithdrawal?: string;
   referrals: string[];
+}
+
+export interface AppSettings {
+  telegramLink: string;
+  minDeposit: number;
+  minWithdraw: number;
+  commissionRate: number;
+  matchFees: number[];
+  bkashNumber: string;
+  bkashType: 'Personal' | 'Agent';
+  nagadNumber: string;
+  nagadType: 'Personal' | 'Agent';
 }
 
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'deposit' | 'withdraw' | 'match_fee' | 'win' | 'referral_bonus';
+  type: 'deposit' | 'withdraw' | 'match_fee' | 'win' | 'referral';
   amount: number;
   bonusUsed: number;
   timestamp: string;
-  status: 'completed' | 'pending' | 'failed';
+  status: 'pending' | 'completed' | 'rejected';
   txId?: string;
   method?: 'bkash' | 'nagad';
-  accountType?: 'Personal' | 'Agent';
   receiverNumber?: string;
 }
 
@@ -52,10 +104,9 @@ export interface DepositRequest {
   amount: number;
   method: 'bkash' | 'nagad';
   txId: string;
-  screenshot?: string; // Base64
+  screenshot?: string;
   status: 'pending' | 'approved' | 'rejected';
-  adminNote?: string;
-  bonusApplied?: number;
+  bonusApplied: number;
   timestamp: string;
 }
 
@@ -68,7 +119,6 @@ export interface WithdrawalRequest {
   accountType: 'Personal' | 'Agent';
   receiverNumber: string;
   status: 'pending' | 'approved' | 'rejected';
-  adminNote?: string;
   timestamp: string;
 }
 
@@ -78,27 +128,4 @@ export interface Notification {
   message: string;
   timestamp: string;
   isRead: boolean;
-}
-
-export interface AppSettings {
-  telegramLink: string;
-  minDeposit: number;
-  minWithdraw: number;
-  commissionRate: number;
-  bkashNumber: string;
-  bkashType: 'Personal' | 'Agent';
-  nagadNumber: string;
-  nagadType: 'Personal' | 'Agent';
-  matchFees: number[];
-}
-
-export interface Match {
-  id: string;
-  players: string[];
-  entryFee: number;
-  prizePool: number;
-  mode: '2P' | '4P';
-  status: 'waiting' | 'playing' | 'completed';
-  winnerId?: string;
-  startTime: string;
 }

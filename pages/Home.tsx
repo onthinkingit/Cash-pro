@@ -1,267 +1,231 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { translations } from '../translations';
-import { Send, Users, User, Trophy, Zap, ChevronRight, Play, AlertCircle, XCircle, Wallet, Frown } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Trophy, Zap, ChevronRight, Play, AlertCircle, XCircle, Award, ShieldCheck, Coins, Sparkles, Check, Info } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { PlayerColor } from '../types';
+import { COLORS } from '../constants';
 
 const Home: React.FC = () => {
   const { lang, settings, user } = useApp();
   const t = translations[lang];
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [selectedFee, setSelectedFee] = useState<number>(settings.matchFees[0] || 12);
-  const [mode, setMode] = useState<'2P' | '4P'>('2P');
+  const [mode, setMode] = useState<'2P' | '3P' | '4P'>('2P');
+  const [selectedColor, setSelectedColor] = useState<PlayerColor>('GREEN');
   const [showEntryDialog, setShowEntryDialog] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success'; action?: { label: string; onClick: () => void } } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
 
-  useEffect(() => {
-    // Handle game results passed via location state
-    if (location.state?.gameResult) {
-      const { gameResult, prize } = location.state;
-      if (gameResult === 'win') {
-        showFeedback(
-          `${t.win}! ${t.totalPrize.replace('{amount}', prize)}`, 
-          'success'
-        );
-      } else {
-        showFeedback(t.lose, 'error');
-      }
-      // Clear navigation state
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location.state]);
-
-  const showFeedback = (message: string, type: 'error' | 'success', action?: { label: string; onClick: () => void }) => {
-    setToast({ message, type, action });
-    if (!action) {
-      setTimeout(() => setToast(null), 5000);
-    }
+  const showFeedback = (message: string, type: 'error' | 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
   };
 
-  const playersCount = mode === '2P' ? 2 : 4;
-  const totalPool = selectedFee * playersCount;
-  const prizePool = totalPool * (1 - settings.commissionRate);
+  const getMultiplier = () => {
+    if (mode === '2P') return 2;
+    if (mode === '3P') return 3;
+    return 4;
+  };
+
+  const prizePool = (selectedFee * getMultiplier() * (1 - settings.commissionRate)).toFixed(0);
+  const isInsufficient = user ? (user.cashBalance + user.bonusBalance) < selectedFee : true;
 
   const handleStartMatch = () => {
     if (!user) return;
-    
-    // Check for block status
     if (user.status === 'banned') {
       showFeedback(t.bannedError, 'error');
       return;
     }
-
-    const totalBalance = user.cashBalance + user.bonusBalance;
-    if (totalBalance < selectedFee) {
-      showFeedback(
-        t.insufficientBalance, 
-        'error', 
-        { 
-          label: t.deposit, 
-          onClick: () => navigate('/wallet?tab=deposit') 
-        }
-      );
+    
+    // Allow start if it's Practice Mode (selectedFee === 0)
+    if (selectedFee > 0 && isInsufficient) {
+      showFeedback(t.insufficientBalance, 'error');
       return;
     }
-
+    
     setShowEntryDialog(false);
-    navigate(`/game?fee=${selectedFee}&mode=${mode}`);
+    navigate(`/game?fee=${selectedFee}&mode=${mode}&color=${selectedColor}`);
   };
 
   return (
-    <div className="space-y-6 animate-in slide-up duration-500 relative">
-      {/* Dynamic Toast Feedback */}
+    <div className="space-y-6 animate-in slide-up duration-700 pb-28 font-sans">
       {toast && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[300] w-[90%] max-w-sm animate-in slide-in-from-top-4 duration-300">
-          <div className={`p-4 rounded-2xl shadow-2xl flex flex-col gap-3 border backdrop-blur-md ${
-            toast.type === 'error' ? 'bg-red-600/90 border-white/20 text-white' : 'bg-emerald/90 border-white/20 text-white'
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[300] w-[90%] max-w-sm animate-in slide-in-from-top-4">
+          <div className={`p-4 rounded-2xl shadow-2xl flex items-center gap-3 border backdrop-blur-md ${
+            toast.type === 'error' ? 'bg-brand-secondary/90 border-white/20' : 'bg-brand-success/90 border-white/20'
           }`}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                {toast.message.includes(t.win) ? <Trophy size={24} className="text-amber-300" /> : 
-                 toast.type === 'error' ? <AlertCircle size={24} /> : <Zap size={24} />}
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-bold leading-tight">{toast.message}</p>
-              </div>
-              <button onClick={() => setToast(null)} className="p-1 hover:bg-white/10 rounded-full">
-                <XCircle size={18} />
-              </button>
+            <AlertCircle size={20} className="text-white" />
+            <p className="text-xs font-semibold text-white flex-1">{toast.message}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Main Hero Showcase */}
+      <div className="relative p-8 bg-brand-dark rounded-[3rem] border border-white/5 overflow-hidden flex flex-col items-center text-center ludo-board-base">
+         <div className="absolute top-0 right-0 w-72 h-72 bg-brand-accent/5 blur-[100px] -mr-32 -mt-32"></div>
+         <div className="absolute bottom-0 left-0 w-72 h-72 bg-brand-secondary/5 blur-[100px] -ml-32 -mb-32"></div>
+         
+         <div className="relative z-10 space-y-6 w-full">
+            <div className="flex items-center justify-center gap-3">
+               <div className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-full flex items-center gap-2 backdrop-blur-md">
+                  <ShieldCheck size={12} className="text-brand-accent" />
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">Secure PvP Infrastructure</span>
+               </div>
             </div>
-            {toast.action && (
+            
+            <div className="space-y-1">
+               <h1 className="text-4xl font-bebas tracking-normal text-white leading-tight">LUDO ARENA PRO</h1>
+               <div className="h-0.5 w-10 bg-brand-accent mx-auto rounded-full"></div>
+               <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest pt-1">{t.proStandard}</p>
+            </div>
+            
+            <button 
+              onClick={() => setShowEntryDialog(true)}
+              className="w-full bg-brand-accent text-brand-black px-8 py-4 rounded-[2rem] font-bebas text-2xl tracking-wide shadow-2xl shadow-brand-accent/20 active:scale-95 transition-all flex items-center justify-center gap-2 btn-premium group"
+            >
+              <Play fill="currentColor" size={20} className="group-hover:translate-x-1 transition-transform" /> 
+              {t.battleNow}
+            </button>
+         </div>
+      </div>
+
+      {/* Match Setup Popup */}
+      {showEntryDialog && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brand-black/98 backdrop-blur-3xl animate-in fade-in">
+          <div className="bg-brand-dark w-full max-w-sm rounded-[3rem] border border-white/10 p-6 space-y-6 shadow-2xl animate-in slide-up relative overflow-hidden max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-center justify-between mb-2 sticky top-0 bg-brand-dark z-10 py-2">
+               <h2 className="text-2xl font-bebas tracking-wide text-white">{t.arenaSetup}</h2>
+               <button onClick={() => setShowEntryDialog(false)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-all"><XCircle size={20} className="text-slate-500" /></button>
+            </div>
+            
+            <div className="space-y-3">
+              <label className="text-[9px] text-slate-500 font-black uppercase tracking-wider ml-1">{t.chooseMode}</label>
+              <div className="grid grid-cols-3 gap-2 p-1.5 bg-brand-black rounded-xl border border-white/5">
+                <button onClick={() => setMode('2P')} className={`py-3 rounded-lg flex items-center justify-center gap-2 font-bebas text-lg tracking-wide transition-all ${mode === '2P' ? 'bg-brand-accent text-brand-black shadow-lg' : 'text-slate-500 hover:text-white'}`}>2P</button>
+                <button onClick={() => setMode('3P')} className={`py-3 rounded-lg flex items-center justify-center gap-2 font-bebas text-lg tracking-wide transition-all ${mode === '3P' ? 'bg-brand-accent text-brand-black shadow-lg' : 'text-slate-500 hover:text-white'}`}>3P</button>
+                <button onClick={() => setMode('4P')} className={`py-3 rounded-lg flex items-center justify-center gap-2 font-bebas text-lg tracking-wide transition-all ${mode === '4P' ? 'bg-brand-accent text-brand-black shadow-lg' : 'text-slate-500 hover:text-white'}`}>4P</button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[9px] text-slate-500 font-black uppercase tracking-wider ml-1">Arena Color</label>
+              <div className="grid grid-cols-4 gap-3">
+                {(['GREEN', 'YELLOW', 'BLUE', 'RED'] as PlayerColor[]).map((color) => (
+                  <button 
+                    key={color}
+                    onClick={() => setSelectedColor(color)}
+                    className={`aspect-square rounded-xl border-2 transition-all flex items-center justify-center relative overflow-hidden ${selectedColor === color ? 'border-white scale-105 shadow-xl z-10' : 'border-transparent opacity-40 hover:opacity-100'}`}
+                    style={{ backgroundColor: COLORS[color] }}
+                  >
+                    {selectedColor === color && <Check className="text-white relative z-10" size={18} strokeWidth={3} />}
+                    <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity"></div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[9px] text-slate-500 font-black uppercase tracking-wider ml-1">{t.entryFee}</label>
+              <div className="grid grid-cols-3 gap-2">
+                {/* Practice Mode Option */}
+                <button 
+                  onClick={() => setSelectedFee(0)}
+                  className={`py-3 rounded-xl font-bebas text-xl border-2 transition-all relative overflow-hidden group ${selectedFee === 0 ? 'bg-brand-success border-brand-success text-brand-black shadow-lg scale-105' : 'bg-brand-black border-white/5 text-brand-success/60 hover:border-brand-success/30'}`}
+                >
+                  <span className="relative z-10">{t.free}</span>
+                  <div className="absolute top-0 right-0 p-1 bg-white/10 group-hover:rotate-12 transition-transform">
+                    <Info size={8} />
+                  </div>
+                </button>
+                {settings.matchFees.map(fee => (
+                  <button 
+                    key={fee} 
+                    onClick={() => setSelectedFee(fee)}
+                    className={`py-3 rounded-xl font-bebas text-xl border-2 transition-all ${selectedFee === fee ? 'bg-brand-accent border-brand-accent text-brand-black shadow-lg scale-105' : 'bg-brand-black border-white/5 text-slate-500 hover:border-white/20'}`}
+                  >৳{fee}</button>
+                ))}
+              </div>
+            </div>
+
+            {selectedFee === 0 ? (
+               <div className="p-6 bg-brand-success/5 rounded-[2rem] border border-brand-success/20 text-center">
+                  <p className="text-[9px] text-brand-success font-black uppercase tracking-widest mb-1">{t.practiceMode}</p>
+                  <h4 className="text-2xl font-bebas text-white tracking-wide leading-none">{t.noStakes}</h4>
+               </div>
+            ) : (
+               <div className="p-6 bg-brand-black/40 rounded-[2rem] border border-white/10 text-center relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4 opacity-5"><Trophy size={60} /></div>
+                  <p className="text-[9px] text-brand-accent font-black uppercase tracking-widest mb-1">{t.prize}</p>
+                  <h4 className="text-4xl font-bebas text-white tracking-wide leading-none">৳{prizePool}</h4>
+               </div>
+            )}
+
+            {selectedFee > 0 && isInsufficient ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-4 bg-brand-secondary/10 border border-brand-secondary/30 rounded-2xl animate-in fade-in">
+                  <AlertCircle size={18} className="text-brand-secondary shrink-0" />
+                  <p className="text-[10px] font-bold text-slate-300 leading-tight">
+                    {t.insufficientBalance}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => navigate('/wallet')} 
+                  className="w-full py-4 bg-brand-secondary text-white rounded-[1.5rem] font-bebas text-2xl tracking-wide shadow-2xl shadow-brand-secondary/20 transition-all btn-premium flex items-center justify-center gap-3"
+                >
+                  <Coins size={20} />
+                  {t.depositNow}
+                </button>
+              </div>
+            ) : (
               <button 
-                onClick={() => {
-                  toast.action?.onClick();
-                  setToast(null);
-                }}
-                className="w-full bg-white text-indigo-900 py-2 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
+                onClick={handleStartMatch} 
+                className="w-full py-4 bg-brand-accent rounded-[1.5rem] font-bebas text-2xl tracking-wide text-brand-black shadow-2xl shadow-brand-accent/20 transition-all btn-premium"
               >
-                <Wallet size={14} />
-                {toast.action.label}
+                {t.confirmBattle}
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Selection Modal */}
-      {showEntryDialog && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-indigo-950 w-full max-w-sm rounded-[2.5rem] border border-white/10 p-8 space-y-8 animate-slide-up shadow-2xl">
-            <h2 className="text-3xl font-bebas text-center tracking-widest">{t.chooseMode}</h2>
-            
-            <div className="space-y-4">
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest text-center">{t.entryFee} (Per Person)</p>
-              <div className="grid grid-cols-3 gap-3">
-                {settings.matchFees.map(fee => (
-                  <button 
-                    key={fee} 
-                    onClick={() => setSelectedFee(fee)}
-                    className={`py-3 rounded-xl font-bebas text-xl border transition-all ${selectedFee === fee ? 'bg-electric border-electric text-white scale-105 shadow-lg shadow-electric/20' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'}`}
-                  >
-                    ৳{fee}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest text-center">Players</p>
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => setMode('2P')}
-                  className={`flex-1 py-4 rounded-2xl font-bebas text-2xl border transition-all ${mode === '2P' ? 'bg-indigo-800 border-electric text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500'}`}
-                >
-                  2 Players
-                </button>
-                <button 
-                  onClick={() => setMode('4P')}
-                  className={`flex-1 py-4 rounded-2xl font-bebas text-2xl border transition-all ${mode === '4P' ? 'bg-indigo-800 border-electric text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500'}`}
-                >
-                  4 Players
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-emerald/10 p-4 rounded-2xl border border-emerald/20 text-center">
-               <p className="text-[10px] text-emerald font-black uppercase tracking-widest mb-1">{t.prize}</p>
-               <p className="text-3xl font-bebas text-emerald tracking-widest">৳{prizePool.toFixed(0)}</p>
-            </div>
-
-            <div className="pt-4 flex gap-4">
-              <button 
-                onClick={() => setShowEntryDialog(false)}
-                className="flex-1 py-4 bg-white/5 rounded-2xl font-bebas text-2xl tracking-widest text-slate-400"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleStartMatch}
-                className="flex-[2] py-4 bg-emerald rounded-2xl font-bebas text-2xl tracking-widest text-white glossy-btn shadow-lg shadow-emerald/20 active:scale-95"
-              >
-                {t.playNow}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Hero LUDO Card */}
-      <div className="relative group overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-800 to-indigo-950 p-10 shadow-2xl border border-white/10 text-center flex flex-col items-center">
-        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:rotate-12 transition-transform">
-          <Zap size={180} />
-        </div>
-        
-        <div className="relative z-10 space-y-4">
-          <div className="flex items-center justify-center gap-4 mb-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full shadow-lg shadow-red-500/50"></div>
-            <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg shadow-green-500/50"></div>
-            <div className="w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>
-            <div className="w-3 h-3 bg-yellow-500 rounded-full shadow-lg shadow-yellow-500/50"></div>
-          </div>
-          
-          <h1 className="text-7xl font-bebas tracking-[0.2em] text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]">LUDO</h1>
-          
-          <button 
-            onClick={() => setShowEntryDialog(true)}
-            className="w-full bg-white text-indigo-950 px-12 py-5 rounded-[2rem] font-bebas text-3xl tracking-widest shadow-2xl hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center gap-3 glossy-btn"
-          >
-            <Play fill="currentColor" size={28} />
-            {t.playNow}
-          </button>
-        </div>
+      {/* Grid Features */}
+      <div className="grid grid-cols-2 gap-4">
+         <FeatureCard title={t.proClassic} label={t.competitive} icon={<Trophy className="text-brand-accent" size={20} />} onClick={() => setShowEntryDialog(true)} />
+         <FeatureCard title={t.blitz} label={t.fastAction} icon={<Zap className="text-brand-gold" size={20} />} onClick={() => setShowEntryDialog(true)} />
+         <FeatureCard title={t.tourney} label={t.seasonPass} icon={<Award className="text-brand-secondary" size={20} />} onClick={() => setShowEntryDialog(true)} />
+         <FeatureCard title={t.cashier} label={t.withdrawals} icon={<Coins className="text-brand-success" size={20} />} onClick={() => navigate('/wallet')} />
       </div>
 
-      {/* Join Telegram Banner */}
-      <div className="flex items-center justify-between p-5 bg-electric rounded-3xl shadow-lg shadow-electric/20 overflow-hidden relative">
-        <div className="flex items-center gap-4 z-10">
-          <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-            <Send size={24} className="text-white fill-white" />
-          </div>
-          <span className="font-bold text-white text-lg tracking-tight">{t.joinTelegram}</span>
-        </div>
-        <a 
-          href={settings.telegramLink} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="bg-white text-electric px-6 py-2.5 rounded-full font-black text-xs uppercase tracking-widest shadow-xl z-10 active:scale-95"
-        >
-          {t.joinNow}
-        </a>
-      </div>
-
-      {/* Game Grid Section */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bebas tracking-[0.1em] px-2">{t.allGames}</h2>
-        <div className="grid grid-cols-2 gap-4">
-           <GameTile 
-             title={t.ludo} 
-             mode="Classic" 
-             color="bg-gradient-to-br from-indigo-700 to-indigo-900" 
-             icon={<User size={32} />}
-             onClick={() => setShowEntryDialog(true)}
-           />
-           <GameTile 
-             title={t.speedLudo} 
-             mode="Fast" 
-             color="bg-gradient-to-br from-electric to-indigo-700" 
-             icon={<Zap size={32} />}
-             onClick={() => setShowEntryDialog(true)}
-           />
-           <GameTile 
-             title={t.tezzLeedo} 
-             mode="Pro" 
-             color="bg-gradient-to-br from-purple-600 to-indigo-950" 
-             icon={<Trophy size={32} />}
-             onClick={() => setShowEntryDialog(true)}
-           />
-        </div>
-      </div>
-      
-      {/* Online Players Indicator */}
-      <div className="flex items-center justify-center gap-2 p-4 bg-white/5 rounded-2xl border border-white/5">
-        <div className="w-2 h-2 rounded-full bg-emerald animate-pulse"></div>
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-[0.1em]">2,841 {t.playersOnline}</span>
+      {/* Refer Card */}
+      <div onClick={() => navigate('/profile')} className="p-8 bg-brand-dark rounded-[2.5rem] border border-white/5 flex items-center justify-between group cursor-pointer hover:border-brand-accent/20 transition-all ludo-board-base relative overflow-hidden">
+         <div className="absolute top-0 left-0 w-32 h-32 bg-brand-accent/5 blur-[60px] -ml-16 -mt-16"></div>
+         <div className="flex items-center gap-6 z-10">
+            <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform border border-white/10 shadow-2xl">
+               <Sparkles className="text-brand-gold" size={20} />
+            </div>
+            <div>
+               <p className="text-xl font-bebas text-white tracking-wide leading-none">{t.affiliateProgram}</p>
+               <p className="text-[9px] text-slate-500 font-black uppercase tracking-wider mt-1.5">{t.earnBonus}</p>
+            </div>
+         </div>
+         <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-brand-accent transition-all">
+            <ChevronRight size={20} className="text-slate-600 group-hover:text-brand-black transition-all" />
+         </div>
       </div>
     </div>
   );
 };
 
-const GameTile = ({ title, mode, color, icon, onClick }: any) => (
-  <button 
-    onClick={onClick}
-    className={`${color} rounded-[2.5rem] p-6 flex flex-col items-start text-left shadow-xl border border-white/10 group active:scale-95 transition-all overflow-hidden relative`}
-  >
-    <div className="p-3 bg-white/10 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
-      {icon}
+const FeatureCard = ({ title, label, icon, onClick }: any) => (
+  <button onClick={onClick} className="bg-brand-dark p-6 rounded-[2rem] border border-white/5 flex flex-col items-center gap-4 group active:scale-95 transition-all text-center ludo-board-base relative overflow-hidden">
+    <div className="absolute inset-0 bg-white/[0.02] opacity-0 group-hover:opacity-100 transition-opacity"></div>
+    <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xl border border-white/10">{icon}</div>
+    <div>
+      <h3 className="text-xl font-bebas tracking-wide text-white leading-none">{title}</h3>
+      <p className="text-[8px] text-slate-500 font-black uppercase tracking-wider mt-1.5">{label}</p>
     </div>
-    <div className="relative z-10">
-      <p className="text-[10px] uppercase font-black text-white/50 tracking-[0.2em] mb-1">{mode}</p>
-      <h3 className="text-xl font-bebas tracking-widest text-white leading-tight">{title}</h3>
-    </div>
-    <ChevronRight className="absolute bottom-6 right-6 text-white/20" size={24} />
   </button>
 );
 

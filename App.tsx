@@ -8,11 +8,13 @@ import Wallet from './pages/Wallet';
 import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 import GameRoom from './pages/GameRoom';
+import Games from './pages/Games';
 import { translations } from './translations';
 import { PlayerLevel, User } from './types';
+import { Languages } from 'lucide-react';
 
 const AppContent: React.FC = () => {
-  const { isLoggedIn, user, setUser, allUsers, setAllUsers, lang, addNotification } = useApp();
+  const { isLoggedIn, user, setUser, allUsers, setAllUsers, lang, setLang, addNotification } = useApp();
   const t = translations[lang];
 
   const [isLogin, setIsLogin] = useState(true);
@@ -22,6 +24,10 @@ const AppContent: React.FC = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
+
+  const toggleLanguage = () => {
+    setLang(lang === 'bn' ? 'en' : 'bn');
+  };
 
   const handleAuth = () => {
     setError('');
@@ -51,14 +57,13 @@ const AppContent: React.FC = () => {
 
     if (!otpSent) {
       if (!phone || phone.length < 11) {
-        setError('Please enter a valid phone number');
+        setError(lang === 'en' ? 'Please enter a valid phone number' : 'সঠিক ফোন নম্বর লিখুন');
         return;
       }
       setOtpSent(true);
       return;
     }
 
-    // Find existing user in mock database
     const existingUser = allUsers.find(u => u.phone === phone);
 
     if (existingUser) {
@@ -68,7 +73,6 @@ const AppContent: React.FC = () => {
       }
       setUser(existingUser);
     } else {
-      // Create new user
       const generatedUserId = `LUDO${Math.floor(1000 + Math.random() * 9000)}`;
       const newUser: User = {
         id: Math.random().toString(36).substr(2, 9),
@@ -76,7 +80,7 @@ const AppContent: React.FC = () => {
         username: `User_${phone.substr(-4)}`,
         customId: generatedUserId,
         cashBalance: 0, 
-        bonusBalance: 10, // Base signup bonus (non-withdrawable)
+        bonusBalance: 12,
         referralCode: Math.random().toString(36).substr(2, 6).toUpperCase(),
         matchesPlayed: 0,
         wins: 0,
@@ -88,7 +92,6 @@ const AppContent: React.FC = () => {
         referrals: []
       };
 
-      // Add referral bonus on top of signup bonus if applicable
       if (!isLogin && referralCode.length > 3) {
         newUser.bonusBalance += 15; 
       }
@@ -96,95 +99,109 @@ const AppContent: React.FC = () => {
       setAllUsers(prev => [...prev, newUser]);
       setUser(newUser);
       
-      // Welcome notification
       setTimeout(() => {
-        addNotification(newUser.id, lang === 'en' ? "Welcome! You've received a ৳10 signup bonus." : "স্বাগতম! আপনি ১০৳ সাইনআপ বোনাস পেয়েছেন।");
+        addNotification(newUser.id, lang === 'en' ? "Welcome! You've received a ৳12 signup bonus." : "স্বাগতম! আপনি ১২৳ সাইনআপ বোনাস পেয়েছেন।");
       }, 1000);
     }
   };
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 overflow-hidden">
-        <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 overflow-hidden relative font-sans">
+        {/* Background Gradients */}
+        <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-brand-accent/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-brand-secondary/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+        {/* Top Language Toggle for Auth Screen */}
+        <div className="absolute top-8 right-8 z-[50]">
+           <button 
+             onClick={toggleLanguage} 
+             className="px-4 py-2.5 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-all active:scale-95 flex items-center gap-2 backdrop-blur-md"
+           >
+             <Languages size={18} className="text-brand-accent" />
+             <span className="text-[10px] font-black uppercase tracking-wider text-white">
+               {lang === 'bn' ? 'English' : 'বাংলা'}
+             </span>
+           </button>
+        </div>
 
         <div className="w-full max-w-md z-10 animate-slide-up">
           <div className="text-center mb-10">
-            <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-orange-600 rounded-3xl flex items-center justify-center font-bebas text-6xl mx-auto mb-4 shadow-2xl shadow-orange-500/30 transform rotate-3">
-              W
+            <div className="w-20 h-20 bg-brand-dark border border-white/10 rounded-3xl flex items-center justify-center font-bebas text-5xl mx-auto mb-6 shadow-2xl transform rotate-3 relative">
+              <div className="absolute inset-0 bg-brand-accent/20 blur-xl rounded-full"></div>
+              <span className="relative z-10 text-brand-accent">W</span>
             </div>
-            <h1 className="text-5xl font-bebas tracking-[0.2em] text-white">WIN CASH PRO</h1>
-            <p className="text-slate-400 font-medium tracking-widest text-xs mt-2 uppercase">Earn while you play</p>
+            <h1 className="text-4xl font-bebas tracking-wide text-white">WIN CASH PRO</h1>
+            <p className="text-slate-500 font-bold tracking-widest text-[9px] mt-3 uppercase">{lang === 'en' ? 'The Professional Arena' : 'পেশাদার এরিনা'}</p>
           </div>
 
-          <div className="bg-slate-900/40 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-700/50 shadow-2xl space-y-6">
-            <div className="flex gap-4 mb-4">
+          <div className="bg-brand-dark p-8 rounded-[3rem] border border-white/5 shadow-2xl space-y-8">
+            <div className="flex bg-brand-black p-1.5 rounded-2xl border border-white/5">
               <button 
                 onClick={() => { setIsLogin(true); setOtpSent(false); setError(''); }}
-                className={`flex-1 pb-4 text-center font-bebas text-2xl tracking-widest transition-all border-b-2 ${isLogin ? 'text-amber-500 border-amber-500' : 'text-slate-500 border-transparent'}`}
+                className={`flex-1 py-3 text-center font-bebas text-xl tracking-wide transition-all rounded-xl ${isLogin ? 'bg-brand-accent text-brand-black shadow-lg' : 'text-slate-500 hover:text-white'}`}
               >
                 {t.login}
               </button>
               <button 
                 onClick={() => { setIsLogin(false); setOtpSent(false); setError(''); }}
-                className={`flex-1 pb-4 text-center font-bebas text-2xl tracking-widest transition-all border-b-2 ${!isLogin ? 'text-amber-500 border-amber-500' : 'text-slate-500 border-transparent'}`}
+                className={`flex-1 py-3 text-center font-bebas text-xl tracking-wide transition-all rounded-xl ${!isLogin ? 'bg-brand-accent text-brand-black shadow-lg' : 'text-slate-500 hover:text-white'}`}
               >
                 {t.register}
               </button>
             </div>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-2xl text-red-500 text-xs font-bold animate-in fade-in">
+              <div className="bg-brand-secondary/10 border border-brand-secondary/30 p-4 rounded-2xl text-brand-secondary text-[11px] font-bold text-center animate-in fade-in">
                 {error}
               </div>
             )}
 
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{t.phone}</label>
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">{t.phone}</label>
                 <input 
                   type="tel" 
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="01xxxxxxxxx"
-                  className="w-full bg-slate-950/50 border border-slate-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-white font-medium"
+                  className="w-full bg-brand-black border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-brand-accent transition-all text-white font-bold tracking-wide"
                 />
               </div>
 
               {phone === '01577378394' ? (
                 <div className="space-y-2 animate-in slide-in-from-top-2">
-                  <label className="text-[10px] font-bold text-amber-500/70 uppercase tracking-widest ml-1">Secure Admin Key</label>
+                  <label className="text-[9px] font-black text-brand-accent uppercase tracking-wider ml-1">Secure Admin Key</label>
                   <input 
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-950/50 border border-amber-500/50 rounded-2xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-amber-500 text-white font-mono"
+                    className="w-full bg-brand-black border border-brand-accent/50 rounded-2xl px-6 py-4 focus:outline-none focus:ring-1 focus:ring-brand-accent text-white font-mono"
                   />
                 </div>
               ) : (
                 <>
                   {otpSent && (
                     <div className="space-y-2 animate-in slide-in-from-top-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{t.otp}</label>
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">{t.otp}</label>
                       <input 
                         type="text" 
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
                         placeholder="123456"
-                        className="w-full bg-slate-950/50 border border-slate-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-amber-500 text-white tracking-[0.5em] font-bold text-center"
+                        className="w-full bg-brand-black border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-brand-accent text-white tracking-[0.3em] font-black text-center text-xl"
                       />
                     </div>
                   )}
                   {!isLogin && !otpSent && (
                     <div className="space-y-2 animate-in slide-in-from-top-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{t.referralCode}</label>
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">{t.referralCode}</label>
                       <input 
                         type="text" 
                         value={referralCode}
                         onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                         placeholder="OPTIONAL"
-                        className="w-full bg-slate-950/50 border border-slate-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-amber-500 text-white font-bold uppercase tracking-widest"
+                        className="w-full bg-brand-black border border-white/10 rounded-2xl px-6 py-4 focus:outline-none focus:border-brand-accent text-white font-bold uppercase tracking-wider"
                       />
                     </div>
                   )}
@@ -193,15 +210,15 @@ const AppContent: React.FC = () => {
 
               <button 
                 onClick={handleAuth}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 py-5 rounded-2xl font-bebas text-3xl tracking-widest text-white transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98] mt-4"
+                className="w-full bg-brand-accent text-brand-black py-5 rounded-2xl font-bebas text-2xl tracking-wide transition-all shadow-xl shadow-brand-accent/10 active:scale-95 mt-4 btn-premium"
               >
-                {otpSent || phone === '01577378394' ? 'AUTHENTICATE' : 'GET VERIFIED'}
+                {otpSent || phone === '01577378394' ? (lang === 'en' ? 'CONTINUE' : 'চালিয়ে যান') : (lang === 'en' ? 'VERIFY' : 'যাচাই করুন')}
               </button>
             </div>
           </div>
           
-          <p className="text-center text-slate-500 text-xs mt-8 tracking-widest font-medium">
-            © 2024 WIN CASH PRO. ALL RIGHTS RESERVED.
+          <p className="text-center text-slate-600 text-[9px] font-black mt-12 tracking-widest uppercase">
+            © 2024 WIN CASH PRO ARENA.
           </p>
         </div>
       </div>
@@ -217,6 +234,7 @@ const AppContent: React.FC = () => {
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/game" element={<GameRoom />} />
+          <Route path="/games" element={<Games />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Layout>
